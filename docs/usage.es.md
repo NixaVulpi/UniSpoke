@@ -66,6 +66,17 @@ Wintun es un controlador TUN en espacio de usuario (MIT, firmado por Microsoft).
 
 Windows instala el controlador la primera vez que se crea el adaptador; el modo VPN muestra un error claro si falta `wintun.dll`.
 
+## Transporte UDP
+
+Los gateways Legacy también ofrecen un plano de datos UDP (modo de túnel 3). Sustituye las tramas TLS por datagramas UDP y es varias veces más rápido que la ruta TCP en el mismo gateway:
+
+```sh
+./unispoke -gateway vpn.example.com:10443 -user alice \
+  -password 'secret' -ca ca.pem -transport udp
+```
+
+El gateway solo acepta tramas UDP de hasta 1280 bytes, por lo que la MTU del túnel se limita a 1240 (`-mss 1200`) aunque se pida una mayor. El plano UDP cifra el cuerpo del paquete IP con AES-128-CBC, pero la cabecera IPv4 de 20 bytes viaja en claro, igual que en el cliente del fabricante. `-transport auto` intenta UDP y vuelve a TCP si el gateway no lo ofrece.
+
 ## Opciones
 
 | Opción | Valor predeterminado | Descripción |
@@ -73,6 +84,7 @@ Windows instala el controlador la primera vez que se crea el adaptador; el modo 
 | `-gateway` | obligatorio | Gateway `host:port` |
 | `-user` / `-password` | obligatorio | Credenciales (la contraseña también puede venir de `UNISPOKE_PASSWORD`) |
 | `-mode` | `auto` | `auto`, `legacy` o `v1` |
+| `-transport` | `tcp` | Transporte de datos: `tcp`, `udp` o `auto` |
 | `-domain` | host del gateway | Dominio de autenticación |
 | `-mac` | derivado | MAC del cliente |
 | `-socks` | `127.0.0.1:1080` | Dirección de escucha SOCKS5; vacío lo desactiva |

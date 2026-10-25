@@ -94,6 +94,28 @@ A gateway may require an endpoint compliance check (CEPS) before the tunnel is e
 - Legacy data payloads may have a two-byte prefix before the IPv4 packet.
 - V1 data payloads begin with eight zero bytes before the IPv4 packet.
 
+### Legacy UDP data plane (mode 3)
+
+Legacy gateways also accept a UDP data plane once the session is authenticated.
+The client requests the UDP port with cmd `0x1A` (reply: big-endian `u16` port)
+and the tunnel mode/key with cmd `0x0D` (request payload `00 00 00 04`; reply:
+big-endian `u32` mode followed by the 16-byte AES-128 key). Mode 3
+(`CHIV_UDPS`) uses this datagram layout:
+
+| Offset | Size | Content |
+|---|---|---|
+| 0 | 8 | `FE FC EF BE C1 92 A4 D6` |
+| 8 | 2 | `02 1C` uplink, `01 1C` downlink |
+| 10 | 2 | `00 10` (varies on downlink) |
+| 12 | 16 | IV: big-endian 32-bit session id + 12 random bytes |
+| 28 | 20 | plaintext IPv4 header |
+| 48 | n | AES-128-CBC ciphertext of the rest of the IP packet, zero-padded to 16 bytes |
+
+The gateway accepts up to 1280 bytes per datagram, leaving room for a 1240-byte
+inner packet. The IV at offset 12 is used for CBC in both directions; the key is
+the one returned by cmd `0x0D`. The receiver decrypts the body and trims it with
+the IPv4 total-length field.
+
 ### Non-TCP payloads
 
 The gateway does **not** filter by IP protocol number; raw IPv4 packets on the data channel may use any protocol. Measurements during reverse engineering:
@@ -108,4 +130,4 @@ The gateway does **not** filter by IP protocol number; raw IPv4 packets on the d
 SOCKS5 `UDP ASSOCIATE` can therefore be built directly on the data channel without implementing the outer UDP transport mode.
 Note that UDP payloads must be >12 bytes (20 IP + 8 UDP + payload > 40); smaller packets must be padded with IP options.
 
-The `UDPPort` field (TLV 9) in V1 `REQVIP` belongs to the **fast transport mode that carries the tunnel over UDP** and is unrelated to payload UDP; this project only uses TLS/TCP transport.
+The `UDPPort` field (TLV 9) in V1 `REQVIP` belongs to the **fast transport mode that carries the tunnel over UDP** and is unrelated to payload UDP; this project implements the legacy UDP data plane (mode 3) described above and keeps TLS/TCP as the default transport.

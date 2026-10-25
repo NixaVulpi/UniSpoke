@@ -68,6 +68,17 @@ Wintun 是用户态 TUN 驱动（MIT，微软签名）。把对应架构的 `win
 
 首次创建适配器时 Windows 会安装驱动；`wintun.dll` 缺失时 VPN 模式会给出明确错误。
 
+## UDP 传输
+
+Legacy 网关还提供 UDP 数据面（隧道模式 3），用 UDP 报文替代 TLS 数据帧，在同一网关上比 TCP 快数倍：
+
+```sh
+./unispoke -gateway vpn.example.com:10443 -user alice \
+  -password 'secret' -ca ca.pem -transport udp
+```
+
+网关只接受不超过 1280 字节的 UDP 帧，因此隧道 MTU 固定为 1240（`-mss 1200`），即使指定更大的 `-mss` 也会被下调。UDP 数据面用 AES-128-CBC 加密 IP 报文主体，但 20 字节 IPv4 头与厂商客户端一致以明文传输。`-transport auto` 会先尝试 UDP，网关不支持时回退到 TCP。
+
 ## 参数
 
 | 参数 | 默认值 | 含义 |
@@ -75,6 +86,7 @@ Wintun 是用户态 TUN 驱动（MIT，微软签名）。把对应架构的 `win
 | `-gateway` | 必填 | 网关 `host:port` |
 | `-user` / `-password` | 必填 | 账号凭据（密码也可用 `UNISPOKE_PASSWORD`） |
 | `-mode` | `auto` | `auto`、`legacy` 或 `v1` |
+| `-transport` | `tcp` | 数据面传输方式：`tcp`、`udp` 或 `auto` |
 | `-domain` | 网关主机名 | 认证域 |
 | `-mac` | 自动推导 | 客户端 MAC |
 | `-socks` | `127.0.0.1:1080` | SOCKS5 监听地址；留空禁用 |

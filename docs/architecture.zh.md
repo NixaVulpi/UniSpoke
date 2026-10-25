@@ -49,6 +49,7 @@ VPN 模式：
 | V1 网关 | 依据协议观测实现，尚未在真实 V1 网关上运行 |
 | SOCKS5 TCP / UDP | 验证通过 |
 | HTTP 代理 | 验证通过（HTTP 代理协议本身不支持 UDP） |
+| UDP 数据面（Legacy 模式 3） | 已实现并在真实网关验证；同一网关上比 TLS 数据面快数倍 |
 | DNS 转发 | 已实现；是否可用取决于网关是否下发 DNS 或 `-dns-server` |
 | VPN 模式（Windows） | 已实现（Wintun + netsh）；需要管理员权限 |
 | VPN 模式（Linux/macOS） | Linux 已在真实网关验证；macOS 已实现但尚未运行；全隧道仅 Windows |

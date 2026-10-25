@@ -47,6 +47,7 @@ El protocolo observado está documentado en [protocol.es.md](protocol.es.md), in
 | Gateway V1 | Implementado a partir de observaciones del protocolo; aún no se ha ejecutado contra un gateway V1 real |
 | SOCKS5 TCP / UDP | Verificado |
 | Proxy HTTP | Verificado (el protocolo del proxy HTTP no puede transportar UDP) |
+| Plano de datos UDP (Legacy modo 3) | Implementado y verificado; varias veces más rápido que la ruta TLS en el mismo gateway |
 | Relay DNS | Implementado; su disponibilidad depende del DNS proporcionado por el gateway o de `-dns-server` |
 | Modo VPN (Windows) | Implementado (Wintun + netsh); requiere privilegios de administrador |
 | Modo VPN (Linux/macOS) | Linux verificado contra un gateway real; macOS implementado pero aún no ejecutado; el túnel completo es exclusivo de Windows |

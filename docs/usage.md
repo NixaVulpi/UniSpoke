@@ -66,6 +66,23 @@ Wintun is a user-space TUN driver (MIT, Microsoft-signed). Place the `wintun.dll
 
 Windows installs the driver the first time the adapter is created; VPN mode reports a clear error when `wintun.dll` is missing.
 
+## UDP transport
+
+Legacy gateways also expose a UDP data plane (tunnel mode 3). It replaces the
+TLS data frames with UDP datagrams and is several times faster than the TCP
+path on the same gateway:
+
+```sh
+./unispoke -gateway vpn.example.com:10443 -user alice \
+  -password 'secret' -ca ca.pem -transport udp
+```
+
+The gateway only accepts UDP frames up to 1280 bytes, so the tunnel MTU is
+capped at 1240 (`-mss 1200`) even when a larger `-mss` is requested. The UDP
+plane encrypts the IP packet body with AES-128-CBC, but the 20-byte IPv4 header
+travels in clear, matching the vendor client. `-transport auto` tries UDP and
+falls back to TCP when the gateway does not offer it.
+
 ## Options
 
 | Flag | Default | Description |
@@ -73,6 +90,7 @@ Windows installs the driver the first time the adapter is created; VPN mode repo
 | `-gateway` | required | Gateway `host:port` |
 | `-user` / `-password` | required | Credentials (the password can also come from `UNISPOKE_PASSWORD`) |
 | `-mode` | `auto` | `auto`, `legacy` or `v1` |
+| `-transport` | `tcp` | Data transport: `tcp`, `udp` or `auto` |
 | `-domain` | gateway host | Authentication domain |
 | `-mac` | derived | Client MAC |
 | `-socks` | `127.0.0.1:1080` | SOCKS5 listen address; empty disables |

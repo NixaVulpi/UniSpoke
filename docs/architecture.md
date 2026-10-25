@@ -47,6 +47,7 @@ The observed protocol is documented in [protocol.md](protocol.md), including fra
 | V1 gateway | Implemented from protocol observations; not yet run against a real V1 gateway |
 | SOCKS5 TCP / UDP | Verified |
 | HTTP proxy | Verified (the HTTP proxy protocol itself cannot carry UDP) |
+| UDP data plane (legacy mode 3) | Implemented and verified; several times faster than the TLS data path on the same gateway |
 | DNS relay | Implemented; availability depends on gateway-provided DNS or `-dns-server` |
 | VPN mode (Windows) | Implemented (Wintun + netsh); requires administrator privileges |
 | VPN mode (Linux/macOS) | Linux verified against a real gateway; macOS implemented but not yet run; full tunnel is Windows-only |

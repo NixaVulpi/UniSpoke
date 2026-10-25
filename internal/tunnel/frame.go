@@ -20,6 +20,8 @@ const (
 	CmdLegacyACL       = 0x06
 	CmdLegacyKeepalive = 0x07
 	CmdLegacyKickout   = 0x08
+	CmdLegacyUDPKey    = 0x0D
+	CmdLegacyUDPPort   = 0x1A
 
 	// V1 帧命令（8 字节头，cmd 位于 +5）。
 	CmdV1Auth          = 0x01

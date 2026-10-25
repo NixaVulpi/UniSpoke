@@ -21,6 +21,8 @@ type legacySession struct {
 	mu     sync.Mutex // 保护 conn、rd、vip、网络参数与 closed
 	conn   net.Conn
 	rd     *FrameReader
+	udp    *net.UDPConn
+	udpKey [16]byte
 	uid    uint32
 	vip    net.IP
 	mask   net.IPMask
@@ -62,6 +64,12 @@ func newLegacySession(cfg Config) (Session, error) {
 	s.dns = ncfg.DNS
 	s.routes = ncfg.Routes
 	cfg.logf("[legacy] vip=%s mask=%s routes=%d dns=%v", ncfg.VIP, net.IP(ncfg.Mask).String(), len(ncfg.Routes), ncfg.DNS)
+
+	if strings.EqualFold(cfg.Transport, "udp") || strings.EqualFold(cfg.Transport, "auto") {
+		if err := s.startUDP(); err != nil {
+			cfg.logf("[legacy] UDP transport disabled: %v", err)
+		}
+	}
 
 	go s.keepaliveLoop()
 	return s, nil
@@ -157,12 +165,23 @@ func (s *legacySession) write(cmd uint16, payload []byte) error {
 	return err
 }
 
-func (s *legacySession) SendIP(pkt []byte) error { return s.write(CmdLegacyData, pkt) }
+func (s *legacySession) SendIP(pkt []byte) error {
+	s.mu.Lock()
+	uc, uid, key := s.udp, s.uid, s.udpKey
+	s.mu.Unlock()
+	if uc != nil {
+		return sendLegacyUDP(uc, uid, key, pkt)
+	}
+	return s.write(CmdLegacyData, pkt)
+}
 
 func (s *legacySession) RecvIP() ([]byte, error) {
 	s.mu.Lock()
-	rd := s.rd
+	rd, uc, key := s.rd, s.udp, s.udpKey
 	s.mu.Unlock()
+	if uc != nil {
+		return recvLegacyUDP(uc, key)
+	}
 	if rd == nil {
 		return nil, errClosed
 	}
@@ -201,6 +220,9 @@ func (s *legacySession) Close() error {
 		return nil
 	}
 	s.closed = true
+	if s.udp != nil {
+		s.udp.Close()
+	}
 	if s.conn != nil {
 		s.conn.Close()
 	}
@@ -266,19 +288,43 @@ func (s *legacySession) Reconnect() error {
 	s.mask = ncfg.Mask
 	s.dns = ncfg.DNS
 	s.routes = ncfg.Routes
+	udp := s.udp
 	s.mu.Unlock()
 	s.cfg.logf("[legacy] reconnect ok, vip=%s", ncfg.VIP)
+
+	if udp != nil {
+		udp.Close()
+		s.mu.Lock()
+		s.udp = nil
+		s.mu.Unlock()
+		if err := s.startUDP(); err != nil {
+			s.cfg.logf("[legacy] UDP renegotiation failed, falling back to TCP: %v", err)
+		}
+	}
 	return nil
 }
 
 func (s *legacySession) keepaliveLoop() {
 	t := time.NewTicker(legacyKeepalive)
 	defer t.Stop()
+	fails := 0
 	for range t.C {
 		if err := s.write(CmdLegacyKeepalive, nil); err != nil {
-			// 不在这里关闭会话：接收侧会发现故障并由 Manager 重连。
+			fails++
+			if fails >= 3 {
+				// 控制通道持续失败：关闭 UDP 套接字让 RecvIP 报错，由 Manager 重建会话。
+				s.mu.Lock()
+				uc := s.udp
+				s.mu.Unlock()
+				if uc != nil {
+					uc.Close()
+				}
+				fails = 0
+			}
 			time.Sleep(time.Second)
+			continue
 		}
+		fails = 0
 	}
 }
 

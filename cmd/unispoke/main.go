@@ -29,6 +29,7 @@ func main() {
 		user      = flag.String("user", "", "VPN username (required)")
 		password  = flag.String("password", "", "VPN password (required)")
 		mode      = flag.String("mode", "auto", "gateway mode: auto|legacy|v1")
+		transport = flag.String("transport", "tcp", "data transport: tcp|udp|auto")
 		insecure  = flag.Bool("insecure", false, "skip TLS certificate verification")
 		sni       = flag.String("sni", "", "TLS server name (defaults to gateway host)")
 		caFile    = flag.String("ca", "", "CA bundle for private gateways")
@@ -102,6 +103,11 @@ func main() {
 	}
 	logf("unispoke %s (%s/%s)", version, runtime.GOOS, runtime.GOARCH)
 
+	if (strings.EqualFold(*transport, "udp") || strings.EqualFold(*transport, "auto")) && *mss > 1200 {
+		logf("mss capped to 1200 for UDP transport (gateway UDP frame is 1280 bytes)")
+		*mss = 1200
+	}
+
 	cfg := tunnel.Config{
 		Gateway:    *gateway,
 		User:       *user,
@@ -109,6 +115,7 @@ func main() {
 		Domain:     *domain,
 		MAC:        *mac,
 		Mode:       *mode,
+		Transport:  *transport,
 		Insecure:   *insecure,
 		ServerName: *sni,
 		CAFile:     *caFile,
