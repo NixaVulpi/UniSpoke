@@ -249,11 +249,8 @@ func (d *Device) toTunnel() {
 			continue
 		}
 		for i := 0; i < n; i++ {
-			if sizes[i] < 20 || tunReadOffset+sizes[i] > len(bufs[i]) {
-				continue
-			}
-			pkt := bufs[i][tunReadOffset : tunReadOffset+sizes[i]]
-			if pkt[0]>>4 != 4 {
+			pkt, ok := tunReadPacket(bufs[i], sizes[i])
+			if !ok {
 				continue // 隧道只承载 IPv4
 			}
 			// 网关丢弃 ≤40 字节的 IPv4 报文（纯 ACK 恰好 40 字节）。
@@ -284,12 +281,10 @@ func (d *Device) fromTunnel() {
 		if len(pkt) < 20 || pkt[0]>>4 != 4 || len(pkt) > 65535 {
 			continue
 		}
-		end := tunWriteOffset + len(pkt)
-		clear(buf[:tunWriteOffset]) // Linux 要求 virtio-net 头全零（非 GSO）
-		copy(buf[tunWriteOffset:end], pkt)
+		frame := tunWriteFrame(buf, pkt)
 		d.received.Add(1)
 		d.logPacket("tunnel->os", pkt)
-		if _, err := d.dev.Write([][]byte{buf[:end]}, tunWriteOffset); err != nil {
+		if _, err := d.dev.Write([][]byte{frame}, tunWriteOffset); err != nil {
 			select {
 			case <-d.done:
 				return
@@ -298,4 +293,20 @@ func (d *Device) fromTunnel() {
 			d.logf("[vpn] write: %v", err)
 		}
 	}
+}
+
+// tunWriteFrame 将报文放入带平台 TUN 头预留的缓冲区，返回传给 Write 的切片。
+func tunWriteFrame(buf, pkt []byte) []byte {
+	clear(buf[:tunWriteOffset]) // Linux 要求 virtio-net 头全零（非 GSO）
+	n := copy(buf[tunWriteOffset:], pkt)
+	return buf[:tunWriteOffset+n]
+}
+
+// tunReadPacket 从 Read 返回的缓冲区取出 IPv4 报文。
+func tunReadPacket(buf []byte, size int) ([]byte, bool) {
+	if size < 20 || tunReadOffset+size > len(buf) {
+		return nil, false
+	}
+	pkt := buf[tunReadOffset : tunReadOffset+size]
+	return pkt, pkt[0]>>4 == 4
 }
