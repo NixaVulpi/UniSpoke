@@ -320,7 +320,7 @@ func handleHTTP(c net.Conn, dial DialFunc, logf func(string, ...any)) {
 		_ = c.SetDeadline(time.Time{})
 
 		if req.Method == http.MethodConnect {
-			handleConnect(bw, br, c, req, dial, logf)
+			handleHTTPConnect(bw, br, c, req, dial, logf)
 			return
 		}
 		if !forwardRequest(c, bw, br, req, dial, logf) {
@@ -329,7 +329,7 @@ func handleHTTP(c net.Conn, dial DialFunc, logf func(string, ...any)) {
 	}
 }
 
-func handleConnect(bw *bufio.Writer, br *bufio.Reader, c net.Conn, req *http.Request, dial DialFunc, logf func(string, ...any)) {
+func handleHTTPConnect(bw *bufio.Writer, br *bufio.Reader, c net.Conn, req *http.Request, dial DialFunc, logf func(string, ...any)) {
 	target := withDefaultPort(req.Host, "443")
 	up, err := dial(target)
 	if err != nil {

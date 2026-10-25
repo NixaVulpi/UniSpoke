@@ -25,7 +25,7 @@ func TestParseV1ConfigUDP(t *testing.T) {
 	if !c.VIP.Equal(net.IPv4(10, 10, 100, 1)) {
 		t.Fatalf("vip=%v", c.VIP)
 	}
-	if c.Mode != v1ModeGCM {
+	if c.Mode != v1TunnelModeGCM {
 		t.Fatalf("mode=%d", c.Mode)
 	}
 	if !bytes.Equal(c.GCMKey, key) {
@@ -54,7 +54,7 @@ func TestV1ProbeLayout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(plain) != 8 || binary.BigEndian.Uint32(plain[:4]) != MagicV1 || plain[5] != v1ProbeCmd {
+	if len(plain) != 8 || binary.BigEndian.Uint32(plain[:4]) != MagicV1 || plain[5] != CmdV1UDPProbe {
 		t.Fatalf("bad probe header %x", plain)
 	}
 }
@@ -85,7 +85,7 @@ func TestV1GCMPacketRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != v1GCMHdr+8+len(pkt) {
+	if n != v1GCMHeaderLen+8+len(pkt) {
 		t.Fatalf("datagram len=%d", n)
 	}
 	if !bytes.Equal(buf[4:8], vip) {
@@ -105,12 +105,12 @@ func TestV1GCMPacketRoundTrip(t *testing.T) {
 		t.Fatal("packet mismatch")
 	}
 
-	down := make([]byte, v1GCMHdr+8+len(pkt))
+	down := make([]byte, v1GCMHeaderLen+8+len(pkt))
 	down[0], down[1] = 1, 2
 	copy(down[4:8], vip)
 	iv := make([]byte, 16)
 	_, _ = rand.Read(iv)
-	ct, tag := gcmSeal(key, iv[:v1GCMNonce], BuildV1(CmdV1Data, pkt))
+	ct, tag := gcmSeal(key, iv[:v1GCMNonceLen], BuildV1(CmdV1Data, pkt))
 	copy(down[20:36], iv)
 	copy(down[36:52], tag)
 	copy(down[52:], ct)

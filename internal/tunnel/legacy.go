@@ -338,8 +338,8 @@ func stripVnicPrefix(p []byte) []byte {
 	return p
 }
 
-// LegacyConfig 是 REQVIP 的旧格式固定布局回包。
-type LegacyConfig struct {
+// legacyNetworkConfig 是 REQVIP 的旧格式固定布局回包。
+type legacyNetworkConfig struct {
 	VIP       net.IP
 	Mask      net.IPMask
 	IPAlloc   uint32
@@ -348,11 +348,11 @@ type LegacyConfig struct {
 	Routes    []*net.IPNet
 }
 
-func parseLegacyConfig(p []byte) (*LegacyConfig, error) {
+func parseLegacyConfig(p []byte) (*legacyNetworkConfig, error) {
 	if len(p) < 8 {
 		return nil, fmt.Errorf("config too short (%d)", len(p))
 	}
-	c := &LegacyConfig{
+	c := &legacyNetworkConfig{
 		VIP:  net.IPv4(p[0], p[1], p[2], p[3]).To4(),
 		Mask: net.IPv4Mask(p[4], p[5], p[6], p[7]),
 	}

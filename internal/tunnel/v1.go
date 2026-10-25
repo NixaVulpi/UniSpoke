@@ -115,7 +115,7 @@ func newV1Session(cfg Config) (Session, error) {
 	return s, nil
 }
 
-func (s *v1Session) requestVIP(rd *FrameReader) (*V1Config, error) {
+func (s *v1Session) requestVIP(rd *FrameReader) (*v1NetworkConfig, error) {
 	if err := s.writeCtrl(BuildV1(CmdV1REQVIP, s.token)); err != nil {
 		return nil, fmt.Errorf("reqvip send: %w", err)
 	}
@@ -289,8 +289,8 @@ func parseAuthResponse(p []byte) ([]byte, error) {
 	return nil, errors.New("session token not found")
 }
 
-// V1Config 是 REQVIP 的 TLV 回包。
-type V1Config struct {
+// v1NetworkConfig 是 REQVIP 的 TLV 回包。
+type v1NetworkConfig struct {
 	VIP     net.IP
 	Routes  []*net.IPNet
 	Mode    int
@@ -299,14 +299,14 @@ type V1Config struct {
 	RawTLVs map[uint16][]byte
 }
 
-func parseV1Config(p []byte) (*V1Config, error) {
+func parseV1Config(p []byte) (*v1NetworkConfig, error) {
 	if len(p) < 1 {
 		return nil, errors.New("empty config")
 	}
 	if p[0] != 0 {
 		return nil, fmt.Errorf("reqvip result=%d", p[0])
 	}
-	c := &V1Config{RawTLVs: map[uint16][]byte{}}
+	c := &v1NetworkConfig{RawTLVs: map[uint16][]byte{}}
 	i := 4
 	for i+4 <= len(p) {
 		t := binary.BigEndian.Uint16(p[i : i+2])
@@ -353,9 +353,9 @@ func (s *v1Session) SendIP(pkt []byte) error {
 	s.udpMu.Unlock()
 	if uc != nil {
 		switch mode {
-		case v1ModeCHIV:
+		case v1TunnelModeCHIV:
 			return sendLegacyUDP(uc, sid, key, pkt)
-		case v1ModeGCM:
+		case v1TunnelModeGCM:
 			return sendV1GCM(uc, vip, gkey, pkt)
 		}
 	}
@@ -377,9 +377,9 @@ func (s *v1Session) RecvIP() ([]byte, error) {
 	s.udpMu.Unlock()
 	if uc != nil {
 		switch mode {
-		case v1ModeCHIV:
+		case v1TunnelModeCHIV:
 			return recvLegacyUDP(uc, key)
-		case v1ModeGCM:
+		case v1TunnelModeGCM:
 			return recvV1GCM(uc, gkey)
 		}
 	}

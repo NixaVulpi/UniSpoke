@@ -13,21 +13,21 @@ import (
 
 // V1 UDP 数据面：模式 3 复用 legacy，模式 4 为 52 字节前缀 + AES-256-GCM 密文。
 const (
-	v1ModeCHIV = 3
-	v1ModeGCM  = 4
-	v1ProbeCmd = 0x07
-	v1GCMHdr   = 52
-	v1GCMNonce = 12
-	v1GCMTag   = 16
+	v1TunnelModeCHIV = 3
+	v1TunnelModeGCM  = 4
+	CmdV1UDPProbe    = 0x07
+	v1GCMHeaderLen   = 52
+	v1GCMNonceLen    = 12
+	v1GCMTagLen      = 16
 )
 
-func (s *v1Session) startUDP(vc *V1Config) error {
+func (s *v1Session) startUDP(vc *v1NetworkConfig) error {
 	mode := vc.Mode
-	if mode != v1ModeCHIV && mode != v1ModeGCM {
+	if mode != v1TunnelModeCHIV && mode != v1TunnelModeGCM {
 		if len(vc.GCMKey) == 32 {
-			mode = v1ModeGCM
+			mode = v1TunnelModeGCM
 		} else {
-			mode = v1ModeCHIV
+			mode = v1TunnelModeCHIV
 		}
 	}
 
@@ -35,14 +35,14 @@ func (s *v1Session) startUDP(vc *V1Config) error {
 	var key16 [16]byte
 	haveKey := false
 	keyPayload := []byte(nil)
-	if mode == v1ModeCHIV {
+	if mode == v1TunnelModeCHIV {
 		keyPayload = []byte{0, 0, 0, 4}
 	}
 	if fr, err := s.requestLegacy(CmdLegacyUDPKey, keyPayload, CmdLegacyUDPKey, s.cfg.timeout()); err == nil && len(fr.Payload) >= 20 {
 		m := int(binary.BigEndian.Uint32(fr.Payload[:4]))
 		copy(key16[:], fr.Payload[4:20])
 		haveKey = true
-		if m == v1ModeCHIV || m == v1ModeGCM {
+		if m == v1TunnelModeCHIV || m == v1TunnelModeGCM {
 			mode = m
 		}
 		s.cfg.logf("[v1] UDP key reply mode=%d", m)
@@ -53,15 +53,15 @@ func (s *v1Session) startUDP(vc *V1Config) error {
 		port = int(binary.BigEndian.Uint16(fr.Payload[:2]))
 	}
 	if port == 0 {
-		port = legacyUDPPort
+		port = defaultUDPPort
 	}
-	if mode != v1ModeCHIV && mode != v1ModeGCM {
+	if mode != v1TunnelModeCHIV && mode != v1TunnelModeGCM {
 		return fmt.Errorf("v1 udp: unsupported mode %d", mode)
 	}
-	if mode == v1ModeCHIV && !haveKey {
+	if mode == v1TunnelModeCHIV && !haveKey {
 		return errors.New("v1 udp: mode 3 requires the cmd 0x0D key")
 	}
-	if mode == v1ModeGCM && len(vc.GCMKey) != 32 {
+	if mode == v1TunnelModeGCM && len(vc.GCMKey) != 32 {
 		return errors.New("v1 udp: mode 4 requires a 32-byte GCM key")
 	}
 
@@ -76,7 +76,7 @@ func (s *v1Session) startUDP(vc *V1Config) error {
 	_ = conn.SetReadBuffer(4 << 20)
 	_ = conn.SetWriteBuffer(4 << 20)
 
-	if mode == v1ModeGCM {
+	if mode == v1TunnelModeGCM {
 		probe := buildV1Probe(vc.VIP, vc.GCMKey)
 		if _, err := conn.Write(probe); err != nil {
 			conn.Close()
@@ -129,9 +129,9 @@ func (s *v1Session) requestLegacy(cmd uint16, payload []byte, want int, timeout 
 func buildV1Probe(vip net.IP, key []byte) []byte {
 	iv := make([]byte, 16)
 	_, _ = rand.Read(iv)
-	hdr := BuildV1(v1ProbeCmd, nil)
-	ct, tag := gcmSeal(key, iv[:v1GCMNonce], hdr)
-	buf := make([]byte, v1GCMHdr+len(ct))
+	hdr := BuildV1(CmdV1UDPProbe, nil)
+	ct, tag := gcmSeal(key, iv[:v1GCMNonceLen], hdr)
+	buf := make([]byte, v1GCMHeaderLen+len(ct))
 	buf[0], buf[1] = 1, 2
 	copy(buf[4:8], vip.To4())
 	copy(buf[20:36], iv)
@@ -145,8 +145,8 @@ func sendV1GCM(conn *net.UDPConn, vip net.IP, key, pkt []byte) error {
 	if _, err := rand.Read(iv); err != nil {
 		return err
 	}
-	ct, tag := gcmSeal(key, iv[:v1GCMNonce], BuildV1(CmdV1Data, pkt))
-	buf := make([]byte, v1GCMHdr+len(ct))
+	ct, tag := gcmSeal(key, iv[:v1GCMNonceLen], BuildV1(CmdV1Data, pkt))
+	buf := make([]byte, v1GCMHeaderLen+len(ct))
 	buf[0], buf[1] = 1, 2
 	copy(buf[4:8], vip.To4())
 	copy(buf[20:36], iv)
@@ -157,19 +157,19 @@ func sendV1GCM(conn *net.UDPConn, vip net.IP, key, pkt []byte) error {
 }
 
 func recvV1GCM(conn *net.UDPConn, key []byte) ([]byte, error) {
-	buf := make([]byte, v1GCMHdr+65535)
+	buf := make([]byte, v1GCMHeaderLen+65535)
 	for {
 		n, err := conn.Read(buf)
 		if err != nil {
 			return nil, err
 		}
-		if n < v1GCMHdr+v1GCMTag+8 {
+		if n < v1GCMHeaderLen+v1GCMTagLen+8 {
 			continue
 		}
 		if buf[0] != 1 || buf[1] != 2 {
 			continue
 		}
-		plain, err := gcmOpen(key, buf[20:20+v1GCMNonce], buf[v1GCMHdr:n], buf[36:52])
+		plain, err := gcmOpen(key, buf[20:20+v1GCMNonceLen], buf[v1GCMHeaderLen:n], buf[36:52])
 		if err != nil || len(plain) < 8 {
 			continue
 		}
@@ -196,7 +196,7 @@ func gcmSeal(key, nonce, plain []byte) (ct, tag []byte) {
 		return nil, nil
 	}
 	out := g.Seal(nil, nonce, plain, nil)
-	return out[:len(out)-v1GCMTag], out[len(out)-v1GCMTag:]
+	return out[:len(out)-v1GCMTagLen], out[len(out)-v1GCMTagLen:]
 }
 
 func gcmOpen(key, nonce, ct, tag []byte) ([]byte, error) {

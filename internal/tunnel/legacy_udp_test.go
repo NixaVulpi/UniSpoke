@@ -94,7 +94,7 @@ func TestRecvLegacyUDP(t *testing.T) {
 	binary.BigEndian.PutUint32(iv, 0x0b0001d4)
 	pkt := testIPPacket(100)
 	body := encryptCBC(key[:], iv, pkt[20:])
-	dgram := make([]byte, legacyUDPBody+len(body))
+	dgram := make([]byte, legacyUDPBodyOffset+len(body))
 	copy(dgram[:8], legacyUDPMagic)
 	binary.BigEndian.PutUint16(dgram[8:10], 0x011C)
 	binary.BigEndian.PutUint16(dgram[10:12], 0x0010)

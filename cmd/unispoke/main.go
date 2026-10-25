@@ -187,7 +187,7 @@ func main() {
 		return
 	}
 
-	stack, err := netstack.New(mgr, vip, *mss+40, logf)
+	stack, err := netstack.NewStack(mgr, vip, *mss+40, logf)
 	if err != nil {
 		fatal("netstack: %v", err)
 	}

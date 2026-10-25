@@ -41,7 +41,7 @@ type Stack struct {
 	closeOnce sync.Once
 }
 
-func New(mgr *tunnel.Manager, vip net.IP, mtu int, logf func(string, ...any)) (*Stack, error) {
+func NewStack(mgr *tunnel.Manager, vip net.IP, mtu int, logf func(string, ...any)) (*Stack, error) {
 	v4 := vip.To4()
 	if v4 == nil {
 		return nil, errors.New("netstack: IPv4 VIP required")
