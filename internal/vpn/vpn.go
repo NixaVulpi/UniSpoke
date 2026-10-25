@@ -237,7 +237,7 @@ func (d *Device) toTunnel() {
 		default:
 		}
 
-		n, err := d.dev.Read(bufs, sizes, 0)
+		n, err := d.dev.Read(bufs, sizes, tunReadOffset)
 		if err != nil {
 			select {
 			case <-d.done:
@@ -249,11 +249,15 @@ func (d *Device) toTunnel() {
 			continue
 		}
 		for i := 0; i < n; i++ {
-			if sizes[i] < 20 || bufs[i][0]>>4 != 4 {
+			if sizes[i] < 20 || tunReadOffset+sizes[i] > len(bufs[i]) {
+				continue
+			}
+			pkt := bufs[i][tunReadOffset : tunReadOffset+sizes[i]]
+			if pkt[0]>>4 != 4 {
 				continue // 隧道只承载 IPv4
 			}
 			// 网关丢弃 ≤40 字节的 IPv4 报文（纯 ACK 恰好 40 字节）。
-			pkt := packet.Pad(bufs[i][:sizes[i]])
+			pkt = packet.Pad(pkt)
 			d.sent.Add(1)
 			d.logPacket("os->tunnel", pkt)
 			if err := d.mgr.SendIP(pkt); err != nil {
@@ -282,6 +286,7 @@ func (d *Device) fromTunnel() {
 			continue
 		}
 		end := tunWriteOffset + len(pkt)
+		clear(buf[:tunWriteOffset]) // virtio-net 头必须全零（非 GSO）
 		copy(buf[tunWriteOffset:end], pkt)
 		d.received.Add(1)
 		d.logPacket("tunnel->os", pkt)

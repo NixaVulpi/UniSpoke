@@ -49,15 +49,15 @@ El protocolo observado está documentado en [protocol.es.md](protocol.es.md), in
 | Proxy HTTP | Verificado (el protocolo del proxy HTTP no puede transportar UDP) |
 | Relay DNS | Implementado; su disponibilidad depende del DNS proporcionado por el gateway o de `-dns-server` |
 | Modo VPN (Windows) | Implementado (Wintun + netsh); requiere privilegios de administrador |
-| Modo VPN (Linux/macOS) | Implementado (`ip` / `ifconfig` + `route`); el túnel completo es exclusivo de Windows |
+| Modo VPN (Linux/macOS) | Linux verificado contra un gateway real; macOS implementado pero aún no ejecutado; el túnel completo es exclusivo de Windows |
 
 ## Plataformas
 
 | Sistema operativo | Modo proxy | Modo VPN |
 |---|---|---|
-| Linux amd64/arm64 | ✅ | ✅ (requiere `CAP_NET_ADMIN` o root) |
+| Linux amd64/arm64 | ✅ | ✅ (verificado en Fedora 44 amd64; requiere `CAP_NET_ADMIN` o root) |
 | Windows amd64/arm64 | ✅ | ✅ (requiere privilegios de administrador y `wintun.dll`) |
-| macOS amd64/arm64 | ✅ | ✅ (requiere root) |
+| macOS amd64/arm64 | ✅ | ✅ (requiere root; aún no verificado) |
 
 ## Registro de validación
 
@@ -70,6 +70,16 @@ El 2026-10-25, contra un gateway Legacy (plano de datos gVisor):
 - El binario se compiló en Windows/amd64; el modo proxy y UDP se verificaron contra un gateway real
 - La creación del TUN en modo VPN devolvió correctamente un error de permisos sin privilegios de administrador; la ruta con administrador aún no se ha verificado
 - `go test ./...`, `go vet ./...`, `gofmt -l .` pasaron
+
+El 2026-10-25, en Linux (Fedora 44 Server, kernel 7.1.10, amd64; binario compilado de forma cruzada en Windows/amd64):
+
+- Modo proxy: SOCKS5 `CONNECT` obtuvo el banner SSH de `172.22.1.102:22`; HTTP `absolute-form` y `CONNECT` devolvieron 301 desde el servidor web interno; 200 peticiones keep-alive por cada proxy (1,55 MB) sin errores
+- SOCKS5 `UDP ASSOCIATE`: NetBIOS NBSTAT a `172.22.1.11:137` devolvió una respuesta de 157 bytes
+- El gateway no envió servidores DNS, por lo que el relay DNS permaneció desactivado y los nombres internos no se pudieron resolver; solo eran alcanzables las rutas divididas (sin salida a Internet)
+- Modo VPN: TUN creado con VIP `10.10.100.64/24`, MTU 1240 y nueve rutas; ICMP y TCP a dos subredes internas funcionaron; HTTP devolvió 301
+- La salida ordenada eliminó todas las rutas y el adaptador; `-drop-after` restableció la sesión en unos 150 ms, conservó la VIP y reanudó el tráfico
+- Sin root, el modo VPN falló limpiamente con `operation not permitted`
+- Corregido durante esta ejecución: los paquetes de vuelta no se escribían en el TUN en Linux (`invalid offset`) y macOS tampoco habría funcionado. `wireguard-go` exige un desplazamiento específico de la plataforma — 10 bytes de cabecera virtio-net en Linux, 4 bytes de cabecera de familia de direcciones en macOS — que ahora reserva el plano de datos de la VPN
 
 ## Compatibilidad
 

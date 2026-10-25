@@ -51,15 +51,15 @@ VPN 模式：
 | HTTP 代理 | 验证通过（HTTP 代理协议本身不支持 UDP） |
 | DNS 转发 | 已实现；是否可用取决于网关是否下发 DNS 或 `-dns-server` |
 | VPN 模式（Windows） | 已实现（Wintun + netsh）；需要管理员权限 |
-| VPN 模式（Linux/macOS） | 已实现（`ip` / `ifconfig` + `route`）；全隧道仅 Windows |
+| VPN 模式（Linux/macOS） | Linux 已在真实网关验证；macOS 已实现但尚未运行；全隧道仅 Windows |
 
 ## 平台
 
 | 操作系统 | 代理模式 | VPN 模式 |
 |---|---|---|
-| Linux amd64/arm64 | ✅ | ✅（需要 `CAP_NET_ADMIN` 或 root） |
+| Linux amd64/arm64 | ✅ | ✅（已在 Fedora 44 amd64 验证；需要 `CAP_NET_ADMIN` 或 root） |
 | Windows amd64/arm64 | ✅ | ✅（需要管理员权限与 `wintun.dll`） |
-| macOS amd64/arm64 | ✅ | ✅（需要 root） |
+| macOS amd64/arm64 | ✅ | ✅（需要 root；尚未验证） |
 
 ## 验证记录
 
@@ -72,6 +72,16 @@ VPN 模式：
 - 二进制在 Windows/amd64 上构建，代理模式与 UDP 均通过真实网关验证
 - VPN 模式的 TUN 创建在非管理员环境下正确返回权限错误；管理员环境尚待验证
 - `go test ./...`、`go vet ./...`、`gofmt -l .` 通过
+
+2026-10-25，在 Linux（Fedora 44 Server，内核 7.1.10，amd64；二进制在 Windows/amd64 上交叉编译）上：
+
+- 代理模式：SOCKS5 `CONNECT` 成功读取 `172.22.1.102:22` 的 SSH banner；HTTP `absolute-form` 与 `CONNECT` 均从内网 Web 服务器得到 301；每个代理各跑 200 次 keep-alive 请求（1.55 MB），无错误
+- SOCKS5 `UDP ASSOCIATE`：向 `172.22.1.11:137` 发送 NetBIOS NBSTAT，收到 157 字节应答
+- 网关未下发 DNS，因此 DNS 转发保持关闭，内网域名无法解析；仅分割路由可达（无公网出口）
+- VPN 模式：TUN 创建成功，VIP `10.10.100.64/24`、MTU 1240、九条路由；对两个内网网段的 ICMP 与 TCP 均成功；HTTP 返回 301
+- 优雅退出删除了全部路由与虚拟网卡；`-drop-after` 后约 150 ms 完成重连，VIP 保持不变，流量恢复
+- 非 root 下 VPN 模式以 `operation not permitted` 干净失败
+- 本次验证中修复：Linux 上回程报文无法写入 TUN（`invalid offset`），macOS 同样无法工作。`wireguard-go` 要求平台相关的偏移量——Linux 为 10 字节 virtio-net 头，macOS 为 4 字节地址族头——VPN 数据面现已按平台预留
 
 ## 兼容性
 
