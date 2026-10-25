@@ -96,9 +96,9 @@ Windows installs the driver the first time the adapter is created; VPN mode repo
 
 ## Log formats
 
-- `plain` (default): `2026-10-25T13:02:27.500+08:00 INFO unispoke 0.1.0 (windows/amd64)`
-- `logfmt`: `time=2026-10-25T13:02:27.500+08:00 level=INFO msg="unispoke 0.1.0 (windows/amd64)"`
-- `json`: `{"time":"2026-10-25T13:02:27.500+08:00","level":"INFO","msg":"unispoke 0.1.0 (windows/amd64)"}`
+- `plain` (default): `2026-10-25T13:02:27.500+08:00 INFO unispoke 0.1.3 (windows/amd64)`
+- `logfmt`: `time=2026-10-25T13:02:27.500+08:00 level=INFO msg="unispoke 0.1.3 (windows/amd64)"`
+- `json`: `{"time":"2026-10-25T13:02:27.500+08:00","level":"INFO","msg":"unispoke 0.1.3 (windows/amd64)"}`
 
 `-log-level` and `-quiet` apply to all three formats.
 

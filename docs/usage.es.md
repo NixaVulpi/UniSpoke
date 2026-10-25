@@ -96,9 +96,9 @@ Windows instala el controlador la primera vez que se crea el adaptador; el modo 
 
 ## Formatos de registro
 
-- `plain` (predeterminado): `2026-10-25T13:02:27.500+08:00 INFO unispoke 0.1.0 (windows/amd64)`
-- `logfmt`: `time=2026-10-25T13:02:27.500+08:00 level=INFO msg="unispoke 0.1.0 (windows/amd64)"`
-- `json`: `{"time":"2026-10-25T13:02:27.500+08:00","level":"INFO","msg":"unispoke 0.1.0 (windows/amd64)"}`
+- `plain` (predeterminado): `2026-10-25T13:02:27.500+08:00 INFO unispoke 0.1.3 (windows/amd64)`
+- `logfmt`: `time=2026-10-25T13:02:27.500+08:00 level=INFO msg="unispoke 0.1.3 (windows/amd64)"`
+- `json`: `{"time":"2026-10-25T13:02:27.500+08:00","level":"INFO","msg":"unispoke 0.1.3 (windows/amd64)"}`
 
 `-log-level` y `-quiet` se aplican a los tres formatos.
 
