@@ -1,0 +1,16 @@
+# Normalize everything to LF in the repository so the code builds the same way
+# on Linux, macOS and Windows.
+* text=auto eol=lf
+
+*.go     text eol=lf
+*.mod    text eol=lf
+*.sum    text eol=lf
+*.md     text eol=lf
+*.yml    text eol=lf
+*.sh     text eol=lf
+Makefile text eol=lf
+LICENSE  text eol=lf
+
+# Windows-only scripts keep CRLF.
+*.bat    text eol=crlf
+*.ps1    text eol=crlf

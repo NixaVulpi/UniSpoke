@@ -1,0 +1,102 @@
+# Arquitectura y compatibilidad
+
+[English](architecture.md) | Español | [简体中文](architecture.zh.md)
+
+[← Volver al README](../README.es.md)
+
+## Estructura de módulos
+
+```text
+cmd/unispoke            CLI, listeners, selección de modo
+internal/tunnel         formato de tramas, TLS, autenticación Legacy/V1, sesiones, keepalive, parámetros de red
+internal/netstack       netstack de gVisor (TCP/UDP), inyección y extracción de IP del túnel
+internal/packet         relleno y checksums para el límite de ≤40 bytes del gateway
+internal/proxy          frontales SOCKS5 (CONNECT/UDP ASSOCIATE) y HTTP
+internal/dnsrelay       resolución DNS dentro del túnel y relay DNS UDP local
+internal/vpn            dispositivo TUN/Wintun, configuración de rutas/DNS del sistema, reenvío de IP sin procesar
+```
+
+El plano de datos usa [gVisor netstack](https://gvisor.dev/); el adaptador virtual usa [wireguard-go tun](https://git.zx2c4.com/wireguard-go/).
+
+Modo proxy:
+
+```text
+aplicación -> SOCKS5/HTTP -> netstack(TCP/UDP) -> packet.Pad -> tunnel.SendIP
+aplicación <- SOCKS5/HTTP <- netstack          <-               tunnel.RecvIP <- gateway
+```
+
+Modo VPN:
+
+```text
+pila del sistema -> TUN/Wintun -> packet.Pad -> tunnel.SendIP
+pila del sistema <- TUN/Wintun <-            <- tunnel.RecvIP <- gateway
+```
+
+El túnel es un canal IPv4 sin procesar sobre TLS (cmd `0x02` en Legacy, cmd `0x66` en V1).
+El modo proxy no modifica las rutas ni los adaptadores del host; el modo VPN crea un adaptador virtual y cambia las rutas y el DNS según sea necesario.
+
+## Protocolo
+
+El protocolo observado está documentado en [protocol.es.md](protocol.es.md), incluidos el formato de tramas, los números de comando, el establecimiento de sesión Legacy y V1, la reconexión y el límite de la comprobación de endpoint (CEPS). Leagsoft UniVPN es Huawei SVN; el servicio del cliente se llama `UniVPNCS`. Los comportamientos del servidor no verificados están marcados como tales.
+
+## Estado
+
+| Capacidad | Estado |
+|---|---|
+| Gateway Legacy | Verificado contra un gateway real (autenticación, TCP, UDP, HTTP, reconexión) |
+| Gateway V1 | Implementado a partir de observaciones del protocolo; aún no se ha ejecutado contra un gateway V1 real |
+| SOCKS5 TCP / UDP | Verificado |
+| Proxy HTTP | Verificado (el protocolo del proxy HTTP no puede transportar UDP) |
+| Relay DNS | Implementado; su disponibilidad depende del DNS proporcionado por el gateway o de `-dns-server` |
+| Modo VPN (Windows) | Implementado (Wintun + netsh); requiere privilegios de administrador |
+| Modo VPN (Linux/macOS) | Implementado (`ip` / `ifconfig` + `route`); el túnel completo es exclusivo de Windows |
+
+## Plataformas
+
+| Sistema operativo | Modo proxy | Modo VPN |
+|---|---|---|
+| Linux amd64/arm64 | ✅ | ✅ (requiere `CAP_NET_ADMIN` o root) |
+| Windows amd64/arm64 | ✅ | ✅ (requiere privilegios de administrador y `wintun.dll`) |
+| macOS amd64/arm64 | ✅ | ✅ (requiere root) |
+
+## Registro de validación
+
+El 2026-10-25, contra un gateway Legacy (plano de datos gVisor):
+
+- La autodetección seleccionó Legacy; la autenticación se completó; se asignaron una dirección virtual `/24` y nueve rutas
+- HTTP `absolute-form` y reutilización keep-alive: `/` y `/openapi.json` (2.035.183 bytes) devolvieron 200
+- SOCKS5 `CONNECT`: una respuesta de 2 MB se completó íntegra
+- SOCKS5 `UDP ASSOCIATE`: NetBIOS NBSTAT a `172.22.1.11:137` devolvió una respuesta de 167 bytes
+- El binario se compiló en Windows/amd64; el modo proxy y UDP se verificaron contra un gateway real
+- La creación del TUN en modo VPN devolvió correctamente un error de permisos sin privilegios de administrador; la ruta con administrador aún no se ha verificado
+- `go test ./...`, `go vet ./...`, `gofmt -l .` pasaron
+
+## Compatibilidad
+
+| Dimensión | Soporte | Notas |
+|---|---|---|
+| Generación de gateway | Legacy, V1 | V1 no se ha probado en un entorno real |
+| Autenticación | Usuario/contraseña | No se implementan MFA, certificados ni autenticación por identidad de host |
+| Transporte | TLS (TCP) | No se implementan los modos de transporte UDP externos 2/3/4 |
+| Protocolos de carga | TCP, UDP, ICMP | SOCKS5 UDP verificado; el proxy HTTP no tiene UDP |
+| Familia de direcciones | IPv4 | IPv6 no está implementado |
+| Comprobación de endpoint | No implementada | Los gateways que requieren CEPS no pueden completar el establecimiento |
+| Asignación de direcciones | `REQVIP` | No se implementa la asignación de direcciones basada en DHCP |
+
+## Alcance y limitaciones
+
+- El proxy HTTP no puede transportar UDP; es una limitación del protocolo. Usa SOCKS5 o el modo VPN para UDP.
+- El modo proxy y el modo VPN son mutuamente excluyentes; el modo VPN requiere privilegios de administrador/root.
+- El túnel completo actualmente solo está disponible en Windows; en Linux/macOS usa las rutas divididas proporcionadas por el gateway.
+- La resolución DNS interna depende del DNS proporcionado por el gateway o de `-dns-server`; si no existe ninguno, se usa el resolver del sistema.
+- Una sesión autenticada transporta múltiples flujos; netstack los multiplexa.
+- Las comprobaciones de endpoint CEPS, TLS con criptografía nacional china (`SM2`/`SM3`/`SM4`), IPsec y L2TP están fuera de alcance.
+
+## Componentes de terceros
+
+| Componente | Propósito | Licencia |
+|---|---|---|
+| `gvisor.dev/gvisor` | Pila TCP/IP en espacio de usuario | Apache-2.0 |
+| `golang.zx2c4.com/wireguard` / `wintun` | Dispositivo TUN | MIT |
+| `github.com/go-gost/gosocks5` | Códec del protocolo SOCKS5 | MIT |
+| `github.com/miekg/dns` | Cliente DNS | BSD-3-Clause |

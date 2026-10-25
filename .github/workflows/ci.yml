@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, go ${{ matrix.go }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go: ['1.27.x', 'stable']
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go }}
+          cache: true
+
+      - name: Check formatting
+        if: runner.os == 'Linux'
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then
+            echo "gofmt needed on:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Test (race)
+        if: runner.os == 'Linux'
+        run: go test -race ./...
+
+      - name: Build
+        run: go build ./...
+
+  cross-build:
+    name: cross-build
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: 'stable'
+          cache: true
+
+      - name: Build release targets
+        env:
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          set -e
+          mkdir -p dist
+          ldflags="-s -w"
+          if [ -n "$VERSION" ]; then
+            ldflags="$ldflags -X main.version=${VERSION#v}"
+          fi
+          for target in linux/amd64 linux/arm64 windows/amd64 darwin/amd64 darwin/arm64; do
+            goos="${target%/*}"
+            goarch="${target#*/}"
+            out="dist/unispoke-${goos}-${goarch}"
+            if [ "$goos" = "windows" ]; then
+              out="${out}.exe"
+            fi
+            GOOS="$goos" GOARCH="$goarch" go build -trimpath -ldflags "$ldflags" -o "$out" ./cmd/unispoke
+            echo "built $out"
+          done
+          (cd dist && sha256sum unispoke-* > SHA256SUMS)
+
+      - name: Upload release assets
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            dist/unispoke-*
+            dist/SHA256SUMS
+          generate_release_notes: true

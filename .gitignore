@@ -1,0 +1,24 @@
+# build output
+/unispoke
+/unispoke.exe
+/dist/
+
+# legacy binary name
+/svnspoke
+/svnspoke.exe
+
+# test and runtime artifacts
+*.log
+*.out
+*.test
+*.pid
+
+# local wintun driver (download from wintun.net for Windows VPN mode)
+/wintun.zip
+/wintun/
+/wintun.dll
+
+# local captures / profile exports
+*.json
+!go.mod
+!go.sum
