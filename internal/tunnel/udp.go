@@ -13,14 +13,7 @@ import (
 	"sync"
 )
 
-// Legacy UDP 数据面封装（模式 3，依据官方客户端 sub_4350C0 / sub_51AF00）：
-//
-//	+0   8B   FE FC EF BE C1 92 A4 D6   (legacy 魔数 + V1 魔数)
-//	+8   2B   02 1C  / 下行 01 1C
-//	+10  2B   00 10
-//	+12  16B  IV = [BE32(会话 ID)][3 × 随机 u32]
-//	+28  20B  明文 IPv4 头
-//	+48  n    AES-128-CBC 密文（IP 头之后的内容，零填充到 16 字节）
+// Legacy UDP 数据面：28 字节头 + 明文 IPv4 头 + AES-128-CBC 密文。
 const (
 	legacyUDPPort = 443
 	legacyUDPHdr  = 28

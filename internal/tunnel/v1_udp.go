@@ -11,21 +11,7 @@ import (
 	"time"
 )
 
-// V1 UDP 数据面（依据官方 sub_4350C0 / sub_43D5E0 / sub_43DF00 / sub_51AF00）。
-//
-// 模式 3（CHIV_UDPS）与 legacy 相同：28B 头 + 明文 IPv4 头 + AES-128-CBC 密文，
-// 密钥来自 cmd 0x0D。
-//
-// 模式 4（UDP_AES256GCM，V1 独有）：
-//
-//	+0   4B   01 02 00 00
-//	+4   4B   VIP（大端）
-//	+8   12B  0
-//	+20  16B  IV（OpenSSL 默认取前 12 字节作 GCM nonce）
-//	+36  16B  GCM tag
-//	+52  n    密文 = AES-256-GCM([V1 8B 头 + IP 包])
-//
-// 密钥来自 REQVIP 的 TLV type 8（32 字节）。
+// V1 UDP 数据面：模式 3 复用 legacy，模式 4 为 52 字节前缀 + AES-256-GCM 密文。
 const (
 	v1ModeCHIV = 3
 	v1ModeGCM  = 4

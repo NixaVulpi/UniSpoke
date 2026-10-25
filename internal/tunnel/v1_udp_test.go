@@ -105,7 +105,6 @@ func TestV1GCMPacketRoundTrip(t *testing.T) {
 		t.Fatal("packet mismatch")
 	}
 
-	// 下行：构造同样布局的数据报，recvV1GCM 应还原 IP 包。
 	down := make([]byte, v1GCMHdr+8+len(pkt))
 	down[0], down[1] = 1, 2
 	copy(down[4:8], vip)
