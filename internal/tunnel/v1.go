@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 )
@@ -24,6 +25,14 @@ type v1Session struct {
 	dataMu sync.Mutex
 	data   net.Conn
 	drd    *FrameReader
+
+	udpMu     sync.Mutex
+	udp       *net.UDPConn
+	udpMode   int
+	udpSID    uint32
+	udpKey    [16]byte
+	udpGCMKey []byte
+	udpVIP    net.IP
 
 	stateMu sync.Mutex
 	token   []byte
@@ -93,6 +102,12 @@ func newV1Session(cfg Config) (Session, error) {
 	}
 	s.data = data
 	s.drd = drd
+
+	if strings.EqualFold(cfg.Transport, "udp") || strings.EqualFold(cfg.Transport, "auto") {
+		if err := s.startUDP(ncfg); err != nil {
+			cfg.logf("[v1] UDP transport disabled: %v", err)
+		}
+	}
 
 	go s.controlKeepalive()
 	go s.dataKeepalive()
@@ -280,6 +295,7 @@ type V1Config struct {
 	Routes  []*net.IPNet
 	Mode    int
 	UDPPort int
+	GCMKey  []byte
 	RawTLVs map[uint16][]byte
 }
 
@@ -314,6 +330,10 @@ func parseV1Config(p []byte) (*V1Config, error) {
 			if l >= 1 {
 				c.Mode = int(v[0])
 			}
+		case 8:
+			if l >= 32 {
+				c.GCMKey = append([]byte(nil), v[:32]...)
+			}
 		case 9:
 			if l >= 2 {
 				c.UDPPort = int(binary.BigEndian.Uint16(v[0:2]))
@@ -328,6 +348,17 @@ func parseV1Config(p []byte) (*V1Config, error) {
 }
 
 func (s *v1Session) SendIP(pkt []byte) error {
+	s.udpMu.Lock()
+	uc, mode, sid, key, vip, gkey := s.udp, s.udpMode, s.udpSID, s.udpKey, s.udpVIP, s.udpGCMKey
+	s.udpMu.Unlock()
+	if uc != nil {
+		switch mode {
+		case v1ModeCHIV:
+			return sendLegacyUDP(uc, sid, key, pkt)
+		case v1ModeGCM:
+			return sendV1GCM(uc, vip, gkey, pkt)
+		}
+	}
 	payload := make([]byte, 8+len(pkt))
 	copy(payload[8:], pkt)
 	s.dataMu.Lock()
@@ -341,6 +372,17 @@ func (s *v1Session) SendIP(pkt []byte) error {
 }
 
 func (s *v1Session) RecvIP() ([]byte, error) {
+	s.udpMu.Lock()
+	uc, mode, key, gkey := s.udp, s.udpMode, s.udpKey, s.udpGCMKey
+	s.udpMu.Unlock()
+	if uc != nil {
+		switch mode {
+		case v1ModeCHIV:
+			return recvLegacyUDP(uc, key)
+		case v1ModeGCM:
+			return recvV1GCM(uc, gkey)
+		}
+	}
 	s.dataMu.Lock()
 	rd := s.drd
 	s.dataMu.Unlock()
@@ -397,6 +439,11 @@ func (s *v1Session) Close() error {
 		s.data.Close()
 	}
 	s.dataMu.Unlock()
+	s.udpMu.Lock()
+	if s.udp != nil {
+		s.udp.Close()
+	}
+	s.udpMu.Unlock()
 	return nil
 }
 
@@ -470,6 +517,19 @@ func (s *v1Session) Reconnect() error {
 	s.vip = ncfg.VIP
 	s.routes = ncfg.Routes
 	s.stateMu.Unlock()
+
+	s.udpMu.Lock()
+	oldUDP := s.udp
+	s.udpMu.Unlock()
+	if oldUDP != nil {
+		oldUDP.Close()
+		s.udpMu.Lock()
+		s.udp = nil
+		s.udpMu.Unlock()
+		if err := s.startUDP(ncfg); err != nil {
+			s.cfg.logf("[v1] UDP renegotiation failed, falling back to TLS: %v", err)
+		}
+	}
 
 	go s.controlReader(crd)
 	s.cfg.logf("[v1] reconnect ok, vip=%s", ncfg.VIP)

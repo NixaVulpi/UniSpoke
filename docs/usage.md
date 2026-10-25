@@ -68,9 +68,9 @@ Windows installs the driver the first time the adapter is created; VPN mode repo
 
 ## UDP transport
 
-Legacy gateways also expose a UDP data plane (tunnel mode 3). It replaces the
-TLS data frames with UDP datagrams and is several times faster than the TCP
-path on the same gateway:
+Legacy and V1 gateways also expose a UDP data plane. It replaces the TLS data
+frames with UDP datagrams and is several times faster than the TCP path on the
+same gateway:
 
 ```sh
 ./unispoke -gateway vpn.example.com:10443 -user alice \

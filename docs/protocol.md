@@ -116,6 +116,27 @@ inner packet. The IV at offset 12 is used for CBC in both directions; the key is
 the one returned by cmd `0x0D`. The receiver decrypts the body and trims it with
 the IPv4 total-length field.
 
+### V1 UDP data plane
+
+V1 gateways negotiate UDP the same way — legacy cmd `0x0D` / `0x1A` on the
+control channel — and then switch with a V1 `0x09` frame whose payload is the
+32-byte session token followed by the mode byte (`2` = UDP). V1 supports mode 3
+above and the V1-only mode 4 (`UDP_AES256GCM`):
+
+| Offset | Size | Content |
+|---|---|---|
+| 0 | 4 | `01 02 00 00` |
+| 4 | 4 | VIP, big-endian |
+| 8 | 12 | zero |
+| 20 | 16 | IV; OpenSSL uses the first 12 bytes as the GCM nonce |
+| 36 | 16 | GCM tag |
+| 52 | n | AES-256-GCM ciphertext of `[V1 8-byte header + IPv4 packet]` |
+
+The mode 4 key is TLV type 8 (32 bytes) from the V1 `REQVIP` response. Before
+switching, the client sends a 60-byte probe carrying an empty V1 header (cmd
+`0x07`) and the gateway answers with a `0x0F` acknowledgement. Mode 4 has not
+been tested against a V1 gateway by this project.
+
 ### Non-TCP payloads
 
 The gateway does **not** filter by IP protocol number; raw IPv4 packets on the data channel may use any protocol. Measurements during reverse engineering:

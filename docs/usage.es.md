@@ -68,7 +68,7 @@ Windows instala el controlador la primera vez que se crea el adaptador; el modo 
 
 ## Transporte UDP
 
-Los gateways Legacy también ofrecen un plano de datos UDP (modo de túnel 3). Sustituye las tramas TLS por datagramas UDP y es varias veces más rápido que la ruta TCP en el mismo gateway:
+Los gateways Legacy y V1 también ofrecen un plano de datos UDP. Sustituye las tramas TLS por datagramas UDP y es varias veces más rápido que la ruta TCP en el mismo gateway:
 
 ```sh
 ./unispoke -gateway vpn.example.com:10443 -user alice \

@@ -70,7 +70,7 @@ Wintun 是用户态 TUN 驱动（MIT，微软签名）。把对应架构的 `win
 
 ## UDP 传输
 
-Legacy 网关还提供 UDP 数据面（隧道模式 3），用 UDP 报文替代 TLS 数据帧，在同一网关上比 TCP 快数倍：
+Legacy 与 V1 网关都提供 UDP 数据面，用 UDP 报文替代 TLS 数据帧，在同一网关上比 TCP 快数倍：
 
 ```sh
 ./unispoke -gateway vpn.example.com:10443 -user alice \
