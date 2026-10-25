@@ -21,7 +21,7 @@ import (
 )
 
 // 构建时可通过 -ldflags "-X main.version=..." 覆盖版本号。
-var version = "0.2.0"
+var version = "0.2.1"
 
 func main() {
 	var (
