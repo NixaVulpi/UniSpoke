@@ -47,7 +47,7 @@ The observed protocol is documented in [protocol.md](protocol.md), including fra
 | V1 gateway | Implemented from protocol observations; not yet run against a real V1 gateway |
 | SOCKS5 TCP / UDP | Verified |
 | HTTP proxy | Verified (the HTTP proxy protocol itself cannot carry UDP) |
-| UDP data plane (legacy mode 3) | Implemented and verified; several times faster than the TLS data path on the same gateway |
+| UDP data plane | Legacy mode 3 verified against a real gateway; V1 modes 3/4 implemented and unit-tested, not yet run against a V1 gateway |
 | DNS relay | Implemented; availability depends on gateway-provided DNS or `-dns-server` |
 | VPN mode (Windows) | Implemented (Wintun + netsh); requires administrator privileges |
 | VPN mode (Linux/macOS) | Linux verified against a real gateway; macOS implemented but not yet run; full tunnel is Windows-only |
@@ -82,13 +82,23 @@ On 2026-10-25, on Linux (Fedora 44 Server, kernel 7.1.10, amd64; binary cross-bu
 - Without root, VPN mode failed cleanly with `operation not permitted`
 - Fixed during this run: inbound packets were not written to the TUN on Linux (`invalid offset`), and macOS could not have worked either. `wireguard-go` requires a platform-specific offset — 10 bytes of virtio-net header on Linux, 4 bytes of address-family header on macOS — which the VPN data path now reserves
 
+On 2026-10-25, UDP data plane (Legacy mode 3, derived from packet captures and the vendor client's IDA database):
+
+- The vendor client keeps one TCP/TLS control connection (port 10443) and sends data over UDP port 443
+- Cmd `0x1A` returns the UDP port; cmd `0x0D` returns mode 3 and a 16-byte AES-128 key
+- Each datagram carries a 28-byte header, the 20-byte IPv4 header in clear, and the rest of the IP packet under AES-128-CBC with zero padding
+- The gateway accepts at most 1280 bytes per datagram, so the inner MTU is clamped to 1240 (`-mss 1200`)
+- Reusing receive buffers and raising the UDP socket buffers roughly doubled throughput; four parallel streams reached about 2.8 MiB/s
+- Same-period A/B against the vendor client on the same gateway: `unispoke` 0.93–2.11 MiB/s, vendor client 0.89–1.17 MiB/s
+- V1 modes 3 and 4 were implemented from the same client; unit tests cover the TLV parsing, the mode-4 probe, the GCM round trip and the switch frame, but the available gateway is legacy-only
+
 ## Compatibility
 
 | Dimension | Support | Notes |
 |---|---|---|
 | Gateway generation | Legacy, V1 | V1 has not been tested against a real environment |
 | Authentication | Username/password | MFA, certificate and host identity authentication are not implemented |
-| Transport | TLS (TCP) | Outer UDP transport modes 2/3/4 are not implemented |
+| Transport | TLS/TCP, UDP | UDP mode 3 verified on legacy; V1 modes 3/4 implemented but not verified live; mode 2 is not implemented |
 | Payload protocols | TCP, UDP, ICMP | SOCKS5 UDP verified; the HTTP proxy has no UDP |
 | Address family | IPv4 | IPv6 is not implemented |
 | Endpoint check | Not implemented | Gateways requiring CEPS cannot complete setup |
@@ -101,6 +111,7 @@ On 2026-10-25, on Linux (Fedora 44 Server, kernel 7.1.10, amd64; binary cross-bu
 - Full tunneling is currently Windows-only; on Linux/macOS use the split routes provided by the gateway.
 - Internal DNS resolution relies on gateway-provided DNS or `-dns-server`; when neither is available it falls back to the system resolver.
 - One authenticated session carries multiple flows; all flows are multiplexed by netstack.
+- UDP transport caps the inner MTU at 1240 and leaves the 20-byte IPv4 header in clear, matching the vendor client. Mode 2 (static IV) is not implemented, and the V1 UDP path has not been verified against a live V1 gateway.
 - CEPS endpoint checks, Chinese national cryptography TLS (`SM2`/`SM3`/`SM4`), IPsec and L2TP are out of scope.
 
 ## Third-party components

@@ -75,7 +75,7 @@ Los gateways Legacy y V1 también ofrecen un plano de datos UDP. Sustituye las t
   -password 'secret' -ca ca.pem -transport udp
 ```
 
-El gateway solo acepta tramas UDP de hasta 1280 bytes, por lo que la MTU del túnel se limita a 1240 (`-mss 1200`) aunque se pida una mayor. El plano UDP cifra el cuerpo del paquete IP con AES-128-CBC, pero la cabecera IPv4 de 20 bytes viaja en claro, igual que en el cliente del fabricante. `-transport auto` intenta UDP y vuelve a TCP si el gateway no lo ofrece.
+El gateway solo acepta tramas UDP de hasta 1280 bytes, por lo que la MTU del túnel se limita a 1240 (`-mss 1200`) aunque se pida una mayor. El plano UDP cifra el cuerpo del paquete IP con AES-128-CBC, pero la cabecera IPv4 de 20 bytes viaja en claro, igual que en el cliente del fabricante. En gateways V1 el cliente elige el modo 3 o el modo 4 exclusivo de V1 (AES-256-GCM) según la configuración del gateway. `-transport auto` intenta UDP y vuelve a TCP si el gateway no lo ofrece.
 
 ## Opciones
 
@@ -118,4 +118,5 @@ El gateway solo acepta tramas UDP de hasta 1280 bytes, por lo que la MTU del tú
 
 - Los certificados se verifican de forma predeterminada. `-insecure` solo debe usarse con gateways de laboratorio que tengan certificados autofirmados.
 - Las credenciales en la línea de comandos pueden filtrarse a la lista de procesos; para uso desatendido, prefiere `UNISPOKE_PASSWORD`.
+- El plano UDP cifra el cuerpo del paquete IP pero deja en claro la cabecera IPv4 de 20 bytes, igual que el cliente del fabricante.
 - Usa esta herramienta únicamente en redes en las que tengas autorización para realizar pruebas.

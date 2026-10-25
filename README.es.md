@@ -7,6 +7,8 @@ Un **cliente SSL VPN experimental de Leagsoft UniVPN (Huawei SVN)** que implemen
 - **Modo proxy** — proxies SOCKS5 y HTTP locales
 - **Modo VPN** — crea una interfaz TUN y asume el tráfico del sistema con la VIP, las rutas y el DNS asignados por el gateway
 
+El plano de datos del túnel usa TLS/TCP por defecto y puede usar el transporte UDP del gateway con `-transport udp`.
+
 ## Compilación
 
 Requiere Go 1.27.3 o superior.

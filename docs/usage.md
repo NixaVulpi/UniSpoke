@@ -80,8 +80,10 @@ same gateway:
 The gateway only accepts UDP frames up to 1280 bytes, so the tunnel MTU is
 capped at 1240 (`-mss 1200`) even when a larger `-mss` is requested. The UDP
 plane encrypts the IP packet body with AES-128-CBC, but the 20-byte IPv4 header
-travels in clear, matching the vendor client. `-transport auto` tries UDP and
-falls back to TCP when the gateway does not offer it.
+travels in clear, matching the vendor client. On V1 gateways the client selects
+mode 3 or the V1-only mode 4 (AES-256-GCM) from the gateway's configuration.
+`-transport auto` tries UDP and falls back to TCP when the gateway does not
+offer it.
 
 ## Options
 
@@ -124,4 +126,5 @@ falls back to TCP when the gateway does not offer it.
 
 - Certificates are verified by default. `-insecure` is only for lab gateways with self-signed certificates.
 - Credentials on the command line may leak into the process list; prefer `UNISPOKE_PASSWORD` for unattended use.
+- The UDP data plane encrypts the IP packet body but leaves the 20-byte IPv4 header in clear, matching the vendor client.
 - Use this tool only on networks you are authorized to test.

@@ -47,7 +47,7 @@ El protocolo observado está documentado en [protocol.es.md](protocol.es.md), in
 | Gateway V1 | Implementado a partir de observaciones del protocolo; aún no se ha ejecutado contra un gateway V1 real |
 | SOCKS5 TCP / UDP | Verificado |
 | Proxy HTTP | Verificado (el protocolo del proxy HTTP no puede transportar UDP) |
-| Plano de datos UDP (Legacy modo 3) | Implementado y verificado; varias veces más rápido que la ruta TLS en el mismo gateway |
+| Plano de datos UDP | Legacy modo 3 verificado contra un gateway real; V1 modos 3/4 implementados y probados con tests unitarios, aún no ejecutados contra un gateway V1 |
 | Relay DNS | Implementado; su disponibilidad depende del DNS proporcionado por el gateway o de `-dns-server` |
 | Modo VPN (Windows) | Implementado (Wintun + netsh); requiere privilegios de administrador |
 | Modo VPN (Linux/macOS) | Linux verificado contra un gateway real; macOS implementado pero aún no ejecutado; el túnel completo es exclusivo de Windows |
@@ -82,13 +82,23 @@ El 2026-10-25, en Linux (Fedora 44 Server, kernel 7.1.10, amd64; binario compila
 - Sin root, el modo VPN falló limpiamente con `operation not permitted`
 - Corregido durante esta ejecución: los paquetes de vuelta no se escribían en el TUN en Linux (`invalid offset`) y macOS tampoco habría funcionado. `wireguard-go` exige un desplazamiento específico de la plataforma — 10 bytes de cabecera virtio-net en Linux, 4 bytes de cabecera de familia de direcciones en macOS — que ahora reserva el plano de datos de la VPN
 
+El 2026-10-25, plano de datos UDP (Legacy modo 3, derivado de capturas y de la base IDA del cliente del fabricante):
+
+- El cliente del fabricante mantiene una conexión TCP/TLS de control (puerto 10443) y envía datos por UDP al puerto 443
+- El comando `0x1A` devuelve el puerto UDP; el comando `0x0D` devuelve el modo 3 y una clave AES-128 de 16 bytes
+- Cada datagrama lleva una cabecera de 28 bytes, la cabecera IPv4 de 20 bytes en claro y el resto del paquete IP con AES-128-CBC y relleno de ceros
+- El gateway acepta como máximo 1280 bytes por datagrama, por lo que la MTU interna se limita a 1240 (`-mss 1200`)
+- Reutilizar los búferes de recepción y ampliar los búferes del socket UDP duplicó aproximadamente el rendimiento; cuatro flujos paralelos alcanzaron unos 2,8 MiB/s
+- Comparación A/B en el mismo periodo contra el cliente del fabricante: `unispoke` 0,93–2,11 MiB/s, cliente del fabricante 0,89–1,17 MiB/s
+- Los modos 3 y 4 de V1 se implementaron a partir del mismo cliente; los tests cubren el análisis TLV, la sonda del modo 4, el viaje de ida y vuelta GCM y la trama de cambio, pero el gateway disponible es solo Legacy
+
 ## Compatibilidad
 
 | Dimensión | Soporte | Notas |
 |---|---|---|
 | Generación de gateway | Legacy, V1 | V1 no se ha probado en un entorno real |
 | Autenticación | Usuario/contraseña | No se implementan MFA, certificados ni autenticación por identidad de host |
-| Transporte | TLS (TCP) | No se implementan los modos de transporte UDP externos 2/3/4 |
+| Transporte | TLS/TCP, UDP | Modo UDP 3 verificado en Legacy; modos 3/4 de V1 implementados pero no verificados en vivo; el modo 2 no está implementado |
 | Protocolos de carga | TCP, UDP, ICMP | SOCKS5 UDP verificado; el proxy HTTP no tiene UDP |
 | Familia de direcciones | IPv4 | IPv6 no está implementado |
 | Comprobación de endpoint | No implementada | Los gateways que requieren CEPS no pueden completar el establecimiento |
@@ -101,6 +111,7 @@ El 2026-10-25, en Linux (Fedora 44 Server, kernel 7.1.10, amd64; binario compila
 - El túnel completo actualmente solo está disponible en Windows; en Linux/macOS usa las rutas divididas proporcionadas por el gateway.
 - La resolución DNS interna depende del DNS proporcionado por el gateway o de `-dns-server`; si no existe ninguno, se usa el resolver del sistema.
 - Una sesión autenticada transporta múltiples flujos; netstack los multiplexa.
+- El transporte UDP limita la MTU interna a 1240 y deja en claro la cabecera IPv4 de 20 bytes, igual que el cliente del fabricante. El modo 2 (IV estático) no está implementado y la ruta UDP de V1 no se ha verificado contra un gateway V1 real.
 - Las comprobaciones de endpoint CEPS, TLS con criptografía nacional china (`SM2`/`SM3`/`SM4`), IPsec y L2TP están fuera de alcance.
 
 ## Componentes de terceros

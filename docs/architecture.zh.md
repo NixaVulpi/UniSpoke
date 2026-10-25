@@ -49,7 +49,7 @@ VPN 模式：
 | V1 网关 | 依据协议观测实现，尚未在真实 V1 网关上运行 |
 | SOCKS5 TCP / UDP | 验证通过 |
 | HTTP 代理 | 验证通过（HTTP 代理协议本身不支持 UDP） |
-| UDP 数据面（Legacy 模式 3） | 已实现并在真实网关验证；同一网关上比 TLS 数据面快数倍 |
+| UDP 数据面 | Legacy 模式 3 已在真实网关验证；V1 模式 3/4 已实现并通过单元测试，尚未在 V1 网关上运行 |
 | DNS 转发 | 已实现；是否可用取决于网关是否下发 DNS 或 `-dns-server` |
 | VPN 模式（Windows） | 已实现（Wintun + netsh）；需要管理员权限 |
 | VPN 模式（Linux/macOS） | Linux 已在真实网关验证；macOS 已实现但尚未运行；全隧道仅 Windows |
@@ -84,13 +84,23 @@ VPN 模式：
 - 非 root 下 VPN 模式以 `operation not permitted` 干净失败
 - 本次验证中修复：Linux 上回程报文无法写入 TUN（`invalid offset`），macOS 同样无法工作。`wireguard-go` 要求平台相关的偏移量——Linux 为 10 字节 virtio-net 头，macOS 为 4 字节地址族头——VPN 数据面现已按平台预留
 
+2026-10-25，UDP 数据面（Legacy 模式 3，依据抓包与厂商客户端 IDA 数据库逆向）：
+
+- 厂商客户端保持一条 TCP/TLS 控制连接（10443），数据走 UDP 443
+- cmd `0x1A` 返回 UDP 端口；cmd `0x0D` 返回模式 3 与 16 字节 AES-128 密钥
+- 每个数据报为 28 字节头 + 明文 20 字节 IPv4 头 + 对其余 IP 包的 AES-128-CBC 密文（零填充）
+- 网关单个 UDP 报文上限 1280 字节，因此内层 MTU 固定为 1240（`-mss 1200`）
+- 复用收包缓冲并加大 UDP socket 缓冲后，吞吐约翻倍；4 条并发流合计约 2.8 MiB/s
+- 同一时段与厂商客户端 A/B 对比：`unispoke` 0.93–2.11 MiB/s，厂商客户端 0.89–1.17 MiB/s
+- V1 模式 3/4 已按同一客户端实现；单元测试覆盖 TLV 解析、模式 4 探测包、GCM 往返与切换帧，但当前网关为 legacy-only
+
 ## 兼容性
 
 | 维度 | 支持情况 | 说明 |
 |---|---|---|
 | 网关代际 | Legacy、V1 | V1 未做真实环境测试 |
 | 认证方式 | 用户名/密码 | 未实现 MFA、证书与主机标识认证 |
-| 传输 | TLS（TCP） | 未实现外层 UDP 传输模式 2/3/4 |
+| 传输 | TLS/TCP、UDP | Legacy UDP 模式 3 已验证；V1 模式 3/4 已实现但未实测；模式 2 未实现 |
 | 载荷协议 | TCP、UDP、ICMP | SOCKS5 UDP 已验证；HTTP 代理无 UDP |
 | 地址族 | IPv4 | 未实现 IPv6 |
 | 端点检查 | 未实现 | 要求 CEPS 的网关无法完成建立 |
@@ -103,6 +113,7 @@ VPN 模式：
 - 全隧道目前仅 Windows；Linux/macOS 请使用网关下发的分隧道路由。
 - 内网域名解析依赖网关下发 DNS 或 `-dns-server`；两者都没有时回退系统解析器。
 - 一个已认证会话承载多条流；各流由 netstack 复用。
+- UDP 传输把内层 MTU 限制在 1240，并与厂商客户端一致保留 20 字节 IPv4 头为明文；模式 2（静态 IV）未实现，V1 UDP 路径尚未在真实 V1 网关验证。
 - CEPS 端点检查、国密 TLS（`SM2`/`SM3`/`SM4`）、IPsec 与 L2TP 不在范围内。
 
 ## 第三方组件

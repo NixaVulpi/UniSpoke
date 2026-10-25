@@ -63,10 +63,14 @@ One Legacy response (the ACL response) uses a little-endian length field; all ot
 | `0x02` | — | Secondary authentication (not implemented) |
 | `0x03` | `0x03` | Request virtual IP / network configuration |
 | `0x06` | `0x07` | Keepalive |
-| `0x09` | — | Tunnel mode switch (not implemented) |
+| `0x07` | — | UDP probe header (mode 4) |
+| `0x09` | — | Tunnel mode switch (1 = SSL, 2 = UDP) |
+| `0x0F` | — | Gateway UDP-available acknowledgement |
 | `0x32` | `0x08` | Kick-out |
 | — | `0x02` | Data |
 | — | `0x05` | DHCP (not implemented) |
+| — | `0x0D` | UDP mode / key request |
+| — | `0x1A` | UDP port request |
 | `0x64` | — | Data channel connect |
 | `0x65` | — | Data channel keepalive |
 | `0x66` | — | Data |
@@ -151,4 +155,4 @@ The gateway does **not** filter by IP protocol number; raw IPv4 packets on the d
 SOCKS5 `UDP ASSOCIATE` can therefore be built directly on the data channel without implementing the outer UDP transport mode.
 Note that UDP payloads must be >12 bytes (20 IP + 8 UDP + payload > 40); smaller packets must be padded with IP options.
 
-The `UDPPort` field (TLV 9) in V1 `REQVIP` belongs to the **fast transport mode that carries the tunnel over UDP** and is unrelated to payload UDP; this project implements the legacy UDP data plane (mode 3) described above and keeps TLS/TCP as the default transport.
+The `UDPPort` field (TLV 9) in V1 `REQVIP` belongs to the **fast transport mode that carries the tunnel over UDP** and is unrelated to payload UDP; this project implements the legacy and V1 UDP data planes (modes 3 and 4), while mode 2 (static IV) and TLS/TCP remain the defaults for their respective generations.

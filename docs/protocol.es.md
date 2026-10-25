@@ -63,10 +63,14 @@ Una respuesta Legacy (la respuesta ACL) usa un campo de longitud little-endian; 
 | `0x02` | — | Autenticación secundaria (no implementada) |
 | `0x03` | `0x03` | Solicitar IP virtual / configuración de red |
 | `0x06` | `0x07` | Keepalive |
-| `0x09` | — | Cambio de modo de túnel (no implementado) |
+| `0x07` | — | Cabecera de sonda UDP (modo 4) |
+| `0x09` | — | Cambio de modo de túnel (1 = SSL, 2 = UDP) |
+| `0x0F` | — | Acuse de UDP disponible del gateway |
 | `0x32` | `0x08` | Expulsión |
 | — | `0x02` | Datos |
 | — | `0x05` | DHCP (no implementado) |
+| — | `0x0D` | Solicitud de modo/clave UDP |
+| — | `0x1A` | Solicitud de puerto UDP |
 | `0x64` | — | Conexión del canal de datos |
 | `0x65` | — | Keepalive del canal de datos |
 | `0x66` | — | Datos |
@@ -94,6 +98,36 @@ El gateway puede exigir una comprobación de cumplimiento del endpoint (CEPS) an
 - Las cargas de datos Legacy pueden llevar un prefijo de dos bytes antes del paquete IPv4.
 - Las cargas de datos V1 comienzan con ocho bytes a cero antes del paquete IPv4.
 
+### Plano de datos UDP Legacy (modo 3)
+
+Los gateways Legacy también aceptan un plano de datos UDP tras autenticar la sesión. El cliente pide el puerto UDP con el comando `0x1A` (respuesta: `u16` big-endian) y el modo/clave con el comando `0x0D` (carga `00 00 00 04`; respuesta: `u32` de modo seguido de la clave AES-128 de 16 bytes). El modo 3 (`CHIV_UDPS`) usa este formato:
+
+| Desplazamiento | Tamaño | Contenido |
+|---|---|---|
+| 0 | 8 | `FE FC EF BE C1 92 A4 D6` |
+| 8 | 2 | `02 1C` ascendente, `01 1C` descendente |
+| 10 | 2 | `00 10` (varía en descendente) |
+| 12 | 16 | IV: id de sesión de 32 bits big-endian + 12 bytes aleatorios |
+| 28 | 20 | cabecera IPv4 en claro |
+| 48 | n | AES-128-CBC del resto del paquete IP, con relleno de ceros a 16 bytes |
+
+El gateway acepta hasta 1280 bytes por datagrama, lo que deja sitio para un paquete interno de 1240 bytes. El IV del desplazamiento 12 se usa para CBC en ambas direcciones; la clave es la del comando `0x0D`. El receptor descifra y recorta con la longitud total IPv4.
+
+### Plano de datos UDP V1
+
+Los gateways V1 negocian UDP igual — comandos legacy `0x0D` / `0x1A` por el canal de control — y luego cambian con una trama V1 `0x09` cuya carga es el token de sesión de 32 bytes seguido del byte de modo (`2` = UDP). V1 admite el modo 3 y el modo 4 (`UDP_AES256GCM`), exclusivo de V1:
+
+| Desplazamiento | Tamaño | Contenido |
+|---|---|---|
+| 0 | 4 | `01 02 00 00` |
+| 4 | 4 | VIP, big-endian |
+| 8 | 12 | cero |
+| 20 | 16 | IV; OpenSSL usa los primeros 12 bytes como nonce GCM |
+| 36 | 16 | etiqueta GCM |
+| 52 | n | AES-256-GCM de `[cabecera V1 de 8 bytes + paquete IPv4]` |
+
+La clave del modo 4 es el TLV tipo 8 (32 bytes) de la respuesta `REQVIP` de V1. Antes del cambio, el cliente envía una sonda de 60 bytes con una cabecera V1 vacía (comando `0x07`) y el gateway responde con un acuse `0x0F`. El modo 4 no se ha probado contra un gateway V1 real.
+
 ### Cargas que no son TCP
 
 El gateway **no** filtra por número de protocolo IP; los paquetes IPv4 sin procesar del canal de datos pueden usar cualquier protocolo. Mediciones durante la ingeniería inversa:
@@ -108,4 +142,4 @@ El gateway **no** filtra por número de protocolo IP; los paquetes IPv4 sin proc
 Por lo tanto, SOCKS5 `UDP ASSOCIATE` puede construirse directamente sobre el canal de datos sin implementar el modo de transporte UDP externo.
 Ten en cuenta que las cargas UDP deben ser >12 bytes (20 IP + 8 UDP + carga > 40); los paquetes más pequeños deben rellenarse con opciones IP.
 
-El campo `UDPPort` (TLV 9) de `REQVIP` en V1 pertenece al **modo de transporte rápido que lleva el túnel sobre UDP** y no está relacionado con el UDP de carga; este proyecto solo usa transporte TLS/TCP.
+El campo `UDPPort` (TLV 9) de `REQVIP` en V1 pertenece al **modo de transporte rápido que lleva el túnel sobre UDP** y no está relacionado con el UDP de carga; este proyecto implementa los planos UDP Legacy y V1 (modos 3 y 4); el modo 2 (IV estático) no está implementado y TLS/TCP sigue siendo el valor predeterminado de cada generación.
