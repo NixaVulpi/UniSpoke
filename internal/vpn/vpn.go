@@ -268,8 +268,7 @@ func (d *Device) toTunnel() {
 }
 
 func (d *Device) fromTunnel() {
-	// Keep headroom for the platform TUN header. Linux TUN devices are
-	// created with IFF_VNET_HDR, so writes must begin at tunWriteOffset.
+	// 为平台 TUN 头预留空间（Linux virtio-net、macOS AF）。
 	buf := make([]byte, tunWriteOffset+65535)
 	for {
 		pkt, err := d.mgr.RecvIP()
@@ -286,7 +285,7 @@ func (d *Device) fromTunnel() {
 			continue
 		}
 		end := tunWriteOffset + len(pkt)
-		clear(buf[:tunWriteOffset]) // virtio-net 头必须全零（非 GSO）
+		clear(buf[:tunWriteOffset]) // Linux 要求 virtio-net 头全零（非 GSO）
 		copy(buf[tunWriteOffset:end], pkt)
 		d.received.Add(1)
 		d.logPacket("tunnel->os", pkt)

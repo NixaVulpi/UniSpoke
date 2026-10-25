@@ -2,9 +2,8 @@
 
 package vpn
 
-// Windows and other platforms write packets directly from the start of the
-// buffer.
-const tunWriteOffset = 0
-
-// tunReadOffset is zero as well: packets are delivered at the buffer start.
-const tunReadOffset = 0
+// Windows 的 Wintun 直接收发裸 IP 报文。
+const (
+	tunWriteOffset = 0
+	tunReadOffset  = 0
+)

@@ -2,11 +2,7 @@
 
 package vpn
 
-// tunWriteOffset mirrors wireguard-go's unexported virtioNetHdrLen.
-// Linux TUN devices are created with IFF_VNET_HDR, and the wireguard tun
-// write path requires this much headroom for the virtio_net_hdr.
+// Linux TUN 始终启用 IFF_VNET_HDR，写入前需预留 10 字节 virtio-net 头。
 const tunWriteOffset = 10
 
-// tunReadOffset is zero on Linux: wireguard-go strips the virtio_net_hdr
-// itself and delivers the packet at the requested offset.
 const tunReadOffset = 0
