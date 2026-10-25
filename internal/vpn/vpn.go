@@ -264,6 +264,9 @@ func (d *Device) toTunnel() {
 }
 
 func (d *Device) fromTunnel() {
+	// Keep headroom for the platform TUN header. Linux TUN devices are
+	// created with IFF_VNET_HDR, so writes must begin at tunWriteOffset.
+	buf := make([]byte, tunWriteOffset+65535)
 	for {
 		pkt, err := d.mgr.RecvIP()
 		if err != nil {
@@ -275,12 +278,14 @@ func (d *Device) fromTunnel() {
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
-		if len(pkt) < 20 || pkt[0]>>4 != 4 {
+		if len(pkt) < 20 || pkt[0]>>4 != 4 || len(pkt) > 65535 {
 			continue
 		}
+		end := tunWriteOffset + len(pkt)
+		copy(buf[tunWriteOffset:end], pkt)
 		d.received.Add(1)
 		d.logPacket("tunnel->os", pkt)
-		if _, err := d.dev.Write([][]byte{pkt}, 0); err != nil {
+		if _, err := d.dev.Write([][]byte{buf[:end]}, tunWriteOffset); err != nil {
 			select {
 			case <-d.done:
 				return
