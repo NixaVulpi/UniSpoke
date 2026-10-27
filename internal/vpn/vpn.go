@@ -62,7 +62,7 @@ func Start(cfg Config, mgr *tunnel.Manager, logf func(string, ...any)) (*Device,
 
 	dev, err := tun.CreateTUN(cfg.Name, cfg.MTU)
 	if err != nil {
-		return nil, fmt.Errorf("vpn: create TUN (需要管理员权限；Windows 需要 wintun.dll): %w", err)
+		return nil, fmt.Errorf("vpn: create TUN (requires administrator privileges; wintun.dll is required on Windows): %w", err)
 	}
 	name, err := dev.Name()
 	if err != nil {
