@@ -7,7 +7,7 @@
 - **代理模式** — 本地 SOCKS5 与 HTTP 代理
 - **VPN 模式** — 创建 TUN 网卡，按网关下发的 VIP/路由/DNS 接管系统流量
 
-隧道数据面默认走 TLS/TCP，可通过 `-transport udp` 使用网关的 UDP 传输。
+隧道数据面默认优先使用网关的 UDP 传输，不可用时回退 TLS/TCP（`-transport tcp` 可强制 TLS/TCP）。
 
 ## 构建
 

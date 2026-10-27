@@ -77,7 +77,7 @@ Legacy 与 V1 网关都提供 UDP 数据面，用 UDP 报文替代 TLS 数据帧
   -password 'secret' -ca ca.pem -transport udp
 ```
 
-网关只接受不超过 1280 字节的 UDP 帧，因此隧道 MTU 固定为 1240（`-mss 1200`），即使指定更大的 `-mss` 也会被下调。UDP 数据面用 AES-128-CBC 加密 IP 报文主体，但 20 字节 IPv4 头与厂商客户端一致以明文传输。V1 网关会根据配置选择模式 3 或 V1 独有的模式 4（AES-256-GCM）。`-transport auto` 会先尝试 UDP，网关不支持时回退到 TCP。
+网关只接受不超过 1280 字节的 UDP 帧，因此隧道 MTU 固定为 1240（`-mss 1200`），即使指定更大的 `-mss` 也会被下调。UDP 数据面用 AES-128-CBC 加密 IP 报文主体，但 20 字节 IPv4 头与厂商客户端一致以明文传输。V1 网关会根据配置选择模式 3 或 V1 独有的模式 4（AES-256-GCM）。默认的 `-transport auto` 会先尝试 UDP，网关不支持时回退到 TCP；`-transport tcp` 可强制使用 TLS/TCP。
 
 ## 参数
 
@@ -86,7 +86,7 @@ Legacy 与 V1 网关都提供 UDP 数据面，用 UDP 报文替代 TLS 数据帧
 | `-gateway` | 必填 | 网关 `host:port` |
 | `-user` / `-password` | 必填 | 账号凭据（密码也可用 `UNISPOKE_PASSWORD`） |
 | `-mode` | `auto` | `auto`、`legacy` 或 `v1` |
-| `-transport` | `tcp` | 数据面传输方式：`tcp`、`udp` 或 `auto` |
+| `-transport` | `auto` | 数据面传输方式：`auto`、`tcp` 或 `udp` |
 | `-domain` | 网关主机名 | 认证域 |
 | `-mac` | 自动推导 | 客户端 MAC |
 | `-socks` | `127.0.0.1:1080` | SOCKS5 监听地址；留空禁用 |

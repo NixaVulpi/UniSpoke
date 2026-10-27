@@ -21,7 +21,7 @@ import (
 )
 
 // 构建时可通过 -ldflags "-X main.version=..." 覆盖版本号。
-var version = "0.2.1"
+var version = "0.2.2"
 
 func main() {
 	var (
@@ -29,7 +29,7 @@ func main() {
 		user      = flag.String("user", "", "VPN username (required)")
 		password  = flag.String("password", "", "VPN password (required)")
 		mode      = flag.String("mode", "auto", "gateway mode: auto|legacy|v1")
-		transport = flag.String("transport", "tcp", "data transport: tcp|udp|auto")
+		transport = flag.String("transport", "auto", "data transport: auto|tcp|udp")
 		insecure  = flag.Bool("insecure", false, "skip TLS certificate verification")
 		sni       = flag.String("sni", "", "TLS server name (defaults to gateway host)")
 		caFile    = flag.String("ca", "", "CA bundle for private gateways")

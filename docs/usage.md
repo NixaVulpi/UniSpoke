@@ -82,8 +82,8 @@ capped at 1240 (`-mss 1200`) even when a larger `-mss` is requested. The UDP
 plane encrypts the IP packet body with AES-128-CBC, but the 20-byte IPv4 header
 travels in clear, matching the vendor client. On V1 gateways the client selects
 mode 3 or the V1-only mode 4 (AES-256-GCM) from the gateway's configuration.
-`-transport auto` tries UDP and falls back to TCP when the gateway does not
-offer it.
+`-transport auto` (the default) tries UDP and falls back to TCP when the
+gateway does not offer it; `-transport tcp` forces the TLS data path.
 
 ## Options
 
@@ -92,7 +92,7 @@ offer it.
 | `-gateway` | required | Gateway `host:port` |
 | `-user` / `-password` | required | Credentials (the password can also come from `UNISPOKE_PASSWORD`) |
 | `-mode` | `auto` | `auto`, `legacy` or `v1` |
-| `-transport` | `tcp` | Data transport: `tcp`, `udp` or `auto` |
+| `-transport` | `auto` | Data transport: `auto`, `tcp` or `udp` |
 | `-domain` | gateway host | Authentication domain |
 | `-mac` | derived | Client MAC |
 | `-socks` | `127.0.0.1:1080` | SOCKS5 listen address; empty disables |
@@ -116,9 +116,9 @@ offer it.
 
 ## Log formats
 
-- `plain` (default): `2026-10-25T13:02:27.500+08:00 INFO unispoke 0.2.1 (windows/amd64)`
-- `logfmt`: `time=2026-10-25T13:02:27.500+08:00 level=INFO msg="unispoke 0.2.1 (windows/amd64)"`
-- `json`: `{"time":"2026-10-25T13:02:27.500+08:00","level":"INFO","msg":"unispoke 0.2.1 (windows/amd64)"}`
+- `plain` (default): `2026-10-25T13:02:27.500+08:00 INFO unispoke 0.2.2 (windows/amd64)`
+- `logfmt`: `time=2026-10-25T13:02:27.500+08:00 level=INFO msg="unispoke 0.2.2 (windows/amd64)"`
+- `json`: `{"time":"2026-10-25T13:02:27.500+08:00","level":"INFO","msg":"unispoke 0.2.2 (windows/amd64)"}`
 
 `-log-level` and `-quiet` apply to all three formats.
 

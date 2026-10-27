@@ -15,7 +15,7 @@ type Config struct {
 	Domain     string // 默认取网关主机名
 	MAC        string // 可选
 	Mode       string // auto | legacy | v1
-	Transport  string // tcp | udp
+	Transport  string // auto | tcp | udp
 	Insecure   bool
 	ServerName string
 	CAFile     string

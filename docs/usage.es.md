@@ -75,7 +75,7 @@ Los gateways Legacy y V1 también ofrecen un plano de datos UDP. Sustituye las t
   -password 'secret' -ca ca.pem -transport udp
 ```
 
-El gateway solo acepta tramas UDP de hasta 1280 bytes, por lo que la MTU del túnel se limita a 1240 (`-mss 1200`) aunque se pida una mayor. El plano UDP cifra el cuerpo del paquete IP con AES-128-CBC, pero la cabecera IPv4 de 20 bytes viaja en claro, igual que en el cliente del fabricante. En gateways V1 el cliente elige el modo 3 o el modo 4 exclusivo de V1 (AES-256-GCM) según la configuración del gateway. `-transport auto` intenta UDP y vuelve a TCP si el gateway no lo ofrece.
+El gateway solo acepta tramas UDP de hasta 1280 bytes, por lo que la MTU del túnel se limita a 1240 (`-mss 1200`) aunque se pida una mayor. El plano UDP cifra el cuerpo del paquete IP con AES-128-CBC, pero la cabecera IPv4 de 20 bytes viaja en claro, igual que en el cliente del fabricante. En gateways V1 el cliente elige el modo 3 o el modo 4 exclusivo de V1 (AES-256-GCM) según la configuración del gateway. `-transport auto` (el valor predeterminado) intenta UDP y vuelve a TCP si el gateway no lo ofrece; `-transport tcp` fuerza la ruta TLS/TCP.
 
 ## Opciones
 
@@ -84,7 +84,7 @@ El gateway solo acepta tramas UDP de hasta 1280 bytes, por lo que la MTU del tú
 | `-gateway` | obligatorio | Gateway `host:port` |
 | `-user` / `-password` | obligatorio | Credenciales (la contraseña también puede venir de `UNISPOKE_PASSWORD`) |
 | `-mode` | `auto` | `auto`, `legacy` o `v1` |
-| `-transport` | `tcp` | Transporte de datos: `tcp`, `udp` o `auto` |
+| `-transport` | `auto` | Transporte de datos: `auto`, `tcp` o `udp` |
 | `-domain` | host del gateway | Dominio de autenticación |
 | `-mac` | derivado | MAC del cliente |
 | `-socks` | `127.0.0.1:1080` | Dirección de escucha SOCKS5; vacío lo desactiva |
@@ -108,9 +108,9 @@ El gateway solo acepta tramas UDP de hasta 1280 bytes, por lo que la MTU del tú
 
 ## Formatos de registro
 
-- `plain` (predeterminado): `2026-10-25T13:02:27.500+08:00 INFO unispoke 0.2.1 (windows/amd64)`
-- `logfmt`: `time=2026-10-25T13:02:27.500+08:00 level=INFO msg="unispoke 0.2.1 (windows/amd64)"`
-- `json`: `{"time":"2026-10-25T13:02:27.500+08:00","level":"INFO","msg":"unispoke 0.2.1 (windows/amd64)"}`
+- `plain` (predeterminado): `2026-10-25T13:02:27.500+08:00 INFO unispoke 0.2.2 (windows/amd64)`
+- `logfmt`: `time=2026-10-25T13:02:27.500+08:00 level=INFO msg="unispoke 0.2.2 (windows/amd64)"`
+- `json`: `{"time":"2026-10-25T13:02:27.500+08:00","level":"INFO","msg":"unispoke 0.2.2 (windows/amd64)"}`
 
 `-log-level` y `-quiet` se aplican a los tres formatos.
 
