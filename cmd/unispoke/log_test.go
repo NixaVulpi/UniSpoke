@@ -10,10 +10,10 @@ import (
 func TestPlainHandler(t *testing.T) {
 	var buf bytes.Buffer
 	logger := slog.New(newPlainHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	logger.Info("unispoke 0.1.0 (windows/amd64)")
+	logger.Info("unispoke 0.2.3 (windows/amd64)")
 	logger.Debug("hidden")
 
-	re := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(Z|[+-]\d{2}:\d{2}) INFO unispoke 0\.1\.0 \(windows/amd64\)\n$`)
+	re := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(Z|[+-]\d{2}:\d{2}) INFO unispoke 0\.2\.3 \(windows/amd64\)\n$`)
 	if !re.MatchString(buf.String()) {
 		t.Fatalf("unexpected log output: %q", buf.String())
 	}
