@@ -24,7 +24,7 @@ import (
 )
 
 // 构建时可通过 -ldflags "-X main.version=..." 覆盖版本号。
-var version = "0.2.3"
+var version = "0.3.0"
 
 type options struct {
 	gateway     string
