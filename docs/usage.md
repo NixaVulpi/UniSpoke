@@ -85,6 +85,29 @@ mode 3 or the V1-only mode 4 (AES-256-GCM) from the gateway's configuration.
 `-transport auto` (the default) tries UDP and falls back to TCP when the
 gateway does not offer it; `-transport tcp` forces the TLS data path.
 
+## System service
+
+`-service install` registers the current command line as a system service (Windows service / systemd / launchd). Every argument except `-service` is written into the service definition (`-ca` relative paths are made absolute), so starting the service needs no configuration file:
+
+```sh
+# Windows (Administrator terminal)
+.\unispoke.exe -gateway vpn.example.com:10443 -user alice -password 'secret' `
+  -ca C:\certs\private-ca.pem -vpn -service install
+.\unispoke.exe -service start
+
+# Linux (root)
+sudo ./unispoke -gateway vpn.example.com:10443 -user alice -password 'secret' \
+  -ca /etc/unispoke/ca.pem -vpn -service install
+sudo ./unispoke -service start
+```
+
+Actions: `install`, `uninstall`, `start`, `stop`, `restart`, `status`.
+
+- Arguments (including the password) are stored in clear text in the service definition (Windows registry `ImagePath`, systemd `ExecStart`, launchd `ProgramArguments`);
+- Services do not inherit user environment variables: when the password comes from `UNISPOKE_PASSWORD` at install time, it is added as `-password` in the service definition;
+- Windows services have no stderr, so logs also go to the event log (source `unispoke`); systemd/launchd collects them on Linux/macOS;
+- `-vpn` needs Administrator/root; a Windows service runs as LocalSystem by default.
+
 ## Options
 
 | Flag | Default | Description |
@@ -112,6 +135,7 @@ gateway does not offer it; `-transport tcp` forces the TLS data path.
 | `-log-format` | `plain` | `plain`, `logfmt` or `json` |
 | `-quiet` | false | Same as `-log-level warn` |
 | `-drop-after` | `0` | Test hook: drop tunnel sockets after the given duration |
+| `-service` | empty | System service action: `install`, `uninstall`, `start`, `stop`, `restart`, `status` |
 | `-version` | false | Print version, OS and architecture |
 
 ## Log formats

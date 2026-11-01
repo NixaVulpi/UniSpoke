@@ -34,6 +34,17 @@ GOOS=darwin  GOARCH=arm64 go build -trimpath -o dist/unispoke-macos-arm64 ./cmd/
 
 Por defecto, SOCKS5 escucha en `127.0.0.1:1080` y HTTP en `127.0.0.1:8080`. Añade `-vpn` para el modo VPN; requiere privilegios de administrador/root y, en Windows, `wintun.dll` debe estar junto al ejecutable.
 
+## Servicio del sistema
+
+`-service install` fija la línea de comandos actual en un servicio del sistema (servicio de Windows / systemd / launchd), de modo que arrancarlo no necesita ningún archivo de configuración:
+
+```sh
+sudo ./unispoke -gateway vpn.example.com:10443 -user alice -password 'secret' -vpn -service install
+sudo ./unispoke -service start      # -service stop para detener, -service uninstall para eliminar
+```
+
+En Windows, ejecuta el mismo comando desde una terminal de administrador. Consulta [Uso](docs/usage.es.md#servicio-del-sistema).
+
 ## Desarrollo
 
 ```sh

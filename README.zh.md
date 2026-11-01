@@ -34,6 +34,17 @@ GOOS=darwin  GOARCH=arm64 go build -trimpath -o dist/unispoke-macos-arm64 ./cmd/
 
 默认在 `127.0.0.1:1080` 提供 SOCKS5、在 `127.0.0.1:8080` 提供 HTTP 代理。VPN 模式加 `-vpn`，需要管理员/root 权限；Windows 还需在程序目录放置 `wintun.dll`。
 
+## 系统服务
+
+`-service install` 会把当前命令行参数固化进系统服务（Windows 服务 / systemd / launchd），之后启动服务不需要配置文件：
+
+```sh
+sudo ./unispoke -gateway vpn.example.com:10443 -user alice -password 'secret' -vpn -service install
+sudo ./unispoke -service start      # 停止用 -service stop，卸载用 -service uninstall
+```
+
+Windows 下请在管理员终端执行同样的命令。详见[使用说明](docs/usage.zh.md#系统服务)。
+
 ## 开发
 
 ```sh

@@ -4,6 +4,7 @@ go 1.27.3
 
 require (
 	github.com/go-gost/gosocks5 v0.5.0
+	github.com/kardianos/service v1.3.0
 	github.com/miekg/dns v1.1.73
 	golang.org/x/sys v0.49.0
 	golang.zx2c4.com/wireguard v0.0.0-20261006164505-2631ce99a06f

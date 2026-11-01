@@ -77,6 +77,29 @@ Los gateways Legacy y V1 también ofrecen un plano de datos UDP. Sustituye las t
 
 El gateway solo acepta tramas UDP de hasta 1280 bytes, por lo que la MTU del túnel se limita a 1240 (`-mss 1200`) aunque se pida una mayor. El plano UDP cifra el cuerpo del paquete IP con AES-128-CBC, pero la cabecera IPv4 de 20 bytes viaja en claro, igual que en el cliente del fabricante. En gateways V1 el cliente elige el modo 3 o el modo 4 exclusivo de V1 (AES-256-GCM) según la configuración del gateway. `-transport auto` (el valor predeterminado) intenta UDP y vuelve a TCP si el gateway no lo ofrece; `-transport tcp` fuerza la ruta TLS/TCP.
 
+## Servicio del sistema
+
+`-service install` registra la línea de comandos actual como servicio del sistema (servicio de Windows / systemd / launchd). Todos los argumentos excepto `-service` se escriben en la definición del servicio (las rutas relativas de `-ca` se convierten en absolutas), así que arrancarlo no necesita ningún archivo de configuración:
+
+```sh
+# Windows (terminal de administrador)
+.\unispoke.exe -gateway vpn.example.com:10443 -user alice -password 'secret' `
+  -ca C:\certs\private-ca.pem -vpn -service install
+.\unispoke.exe -service start
+
+# Linux (root)
+sudo ./unispoke -gateway vpn.example.com:10443 -user alice -password 'secret' \
+  -ca /etc/unispoke/ca.pem -vpn -service install
+sudo ./unispoke -service start
+```
+
+Acciones: `install`, `uninstall`, `start`, `stop`, `restart`, `status`.
+
+- Los argumentos (incluida la contraseña) se guardan en claro en la definición del servicio (registro de Windows `ImagePath`, `ExecStart` de systemd, `ProgramArguments` de launchd);
+- Los servicios no heredan las variables de entorno del usuario: si la contraseña viene de `UNISPOKE_PASSWORD` al instalar, se añade como `-password` en la definición del servicio;
+- Los servicios de Windows no tienen stderr, así que los registros también se envían al registro de eventos (origen `unispoke`); en Linux/macOS los recoge systemd/launchd;
+- `-vpn` requiere administrador/root; un servicio de Windows se ejecuta como LocalSystem de forma predeterminada.
+
 ## Opciones
 
 | Opción | Valor predeterminado | Descripción |
@@ -104,6 +127,7 @@ El gateway solo acepta tramas UDP de hasta 1280 bytes, por lo que la MTU del tú
 | `-log-format` | `plain` | `plain`, `logfmt` o `json` |
 | `-quiet` | false | Equivale a `-log-level warn` |
 | `-drop-after` | `0` | Hook de prueba: cierra los sockets del túnel tras el tiempo indicado |
+| `-service` | vacío | Acción de servicio del sistema: `install`, `uninstall`, `start`, `stop`, `restart`, `status` |
 | `-version` | false | Muestra versión, sistema operativo y arquitectura |
 
 ## Formatos de registro

@@ -79,6 +79,29 @@ Legacy 与 V1 网关都提供 UDP 数据面，用 UDP 报文替代 TLS 数据帧
 
 网关只接受不超过 1280 字节的 UDP 帧，因此隧道 MTU 固定为 1240（`-mss 1200`），即使指定更大的 `-mss` 也会被下调。UDP 数据面用 AES-128-CBC 加密 IP 报文主体，但 20 字节 IPv4 头与厂商客户端一致以明文传输。V1 网关会根据配置选择模式 3 或 V1 独有的模式 4（AES-256-GCM）。默认的 `-transport auto` 会先尝试 UDP，网关不支持时回退到 TCP；`-transport tcp` 可强制使用 TLS/TCP。
 
+## 系统服务
+
+用 `-service install` 把当前命令行注册为系统服务（Windows 服务 / systemd / launchd）。安装时会把除 `-service` 以外的参数写入服务定义（`-ca` 的相对路径会转成绝对路径），以后启动服务不需要任何配置文件：
+
+```sh
+# Windows（管理员终端）
+.\unispoke.exe -gateway vpn.example.com:10443 -user alice -password 'secret' `
+  -ca C:\certs\private-ca.pem -vpn -service install
+.\unispoke.exe -service start
+
+# Linux（root）
+sudo ./unispoke -gateway vpn.example.com:10443 -user alice -password 'secret' \
+  -ca /etc/unispoke/ca.pem -vpn -service install
+sudo ./unispoke -service start
+```
+
+可用动作：`install`、`uninstall`、`start`、`stop`、`restart`、`status`。
+
+- 参数（包括口令）会以明文保存在服务定义中（Windows 注册表 `ImagePath`、systemd unit 的 `ExecStart`、launchd 的 `ProgramArguments`）；
+- 服务不继承用户环境变量：安装时若口令来自 `UNISPOKE_PASSWORD`，程序会自动补上 `-password` 写入服务定义；
+- Windows 服务没有 stderr，日志会同时写入事件日志（来源 `unispoke`）；Linux/macOS 由 systemd/launchd 收集；
+- `-vpn` 需要管理员/root；Windows 服务默认以 LocalSystem 运行，满足要求。
+
 ## 参数
 
 | 参数 | 默认值 | 含义 |
@@ -106,6 +129,7 @@ Legacy 与 V1 网关都提供 UDP 数据面，用 UDP 报文替代 TLS 数据帧
 | `-log-format` | `plain` | `plain`、`logfmt` 或 `json` |
 | `-quiet` | false | 等同 `-log-level warn` |
 | `-drop-after` | `0` | 测试钩子：指定时长后断开隧道套接字 |
+| `-service` | 空 | 系统服务动作：`install`、`uninstall`、`start`、`stop`、`restart`、`status` |
 | `-version` | false | 输出版本、操作系统与架构 |
 
 ## 安全
