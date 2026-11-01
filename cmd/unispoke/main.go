@@ -25,7 +25,7 @@ import (
 )
 
 // 构建时可通过 -ldflags "-X main.version=..." 覆盖版本号。
-var version = "0.3.1"
+var version = "0.3.2"
 
 // progName 是可执行文件名；重命名二进制后提示信息跟随变化。
 var progName = filepath.Base(os.Args[0])
