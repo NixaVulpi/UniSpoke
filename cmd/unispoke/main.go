@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -25,6 +26,9 @@ import (
 
 // 构建时可通过 -ldflags "-X main.version=..." 覆盖版本号。
 var version = "0.3.0"
+
+// progName 是可执行文件名；重命名二进制后提示信息跟随变化。
+var progName = filepath.Base(os.Args[0])
 
 type options struct {
 	gateway     string
@@ -97,7 +101,7 @@ func main() {
 	opts := parseOptions()
 
 	if opts.showVersion {
-		fmt.Printf("unispoke %s %s/%s\n", version, runtime.GOOS, runtime.GOARCH)
+		fmt.Printf("%s %s %s/%s\n", progName, version, runtime.GOOS, runtime.GOARCH)
 		return
 	}
 
@@ -110,7 +114,7 @@ func main() {
 	}
 
 	if opts.gateway == "" || opts.user == "" || opts.password == "" {
-		fmt.Fprintln(os.Stderr, "usage: unispoke -gateway host:port -user USER -password PASS [options]")
+		fmt.Fprintf(os.Stderr, "usage: %s -gateway host:port -user USER -password PASS [options]\n", progName)
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
@@ -154,7 +158,7 @@ func main() {
 		}
 	}
 
-	prg.logf("unispoke %s (%s/%s)", version, runtime.GOOS, runtime.GOARCH)
+	prg.logf("%s %s (%s/%s)", progName, version, runtime.GOOS, runtime.GOARCH)
 	if err := svc.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "run: %v\n", err)
 		os.Exit(1)
@@ -163,7 +167,7 @@ func main() {
 
 // runInteractive 以前台方式运行，收到 Ctrl+C 或 SIGTERM 后清理退出。
 func runInteractive(prg *serviceProgram) {
-	prg.logf("unispoke %s (%s/%s)", version, runtime.GOOS, runtime.GOARCH)
+	prg.logf("%s %s (%s/%s)", progName, version, runtime.GOOS, runtime.GOARCH)
 	if err := prg.Start(nil); err != nil {
 		fmt.Fprintf(os.Stderr, "run: %v\n", err)
 		os.Exit(1)

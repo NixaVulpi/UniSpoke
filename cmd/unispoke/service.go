@@ -171,7 +171,7 @@ func runServiceAction(opts options) error {
 	}
 	if action == "install" {
 		fmt.Printf("service %q installed with %d argument(s)\n", serviceName, len(args))
-		fmt.Printf("use \"%s -service start\" to start it\n", filepath.Base(os.Args[0]))
+		fmt.Printf("use \"%s -service start\" to start it\n", progName)
 	}
 	return nil
 }
