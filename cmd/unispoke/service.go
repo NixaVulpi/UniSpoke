@@ -14,7 +14,7 @@ import (
 
 const (
 	serviceName        = "unispoke"
-	serviceDisplayName = "UniSpoke"
+	serviceDisplayName = "UniSpoke VPN Client"
 	serviceDescription = "UniSpoke SSL VPN client and proxy"
 	serviceFlag        = "service"
 	serviceActions     = "install|uninstall|start|stop|restart|status"
